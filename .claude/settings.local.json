@@ -5,7 +5,12 @@
       "Bash(python:*)",
       "Bash(source:*)",
       "Read(//Users/svenstrohkark/00000000_scanned_documents/**)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(cp:*)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Read(//Users/svenstrohkark/Documents/**)"
     ],
     "deny": [],
     "ask": []

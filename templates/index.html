@@ -15,7 +15,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             background-attachment: fixed;
-            padding: 20px;
+            padding: 20px 20px 40px 20px; /* Extra bottom padding for footer */
             min-height: 100vh;
         }
         
@@ -498,25 +498,52 @@
             background: #5a6268;
         }
         
-        .extracted-text {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f8f9fa;
+        .suggested-path-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #2196F3;
             border-radius: 8px;
-            border: 1px solid #e9ecef;
+            background-color: #f3f9ff;
         }
-        
-        .extracted-text h4 {
-            margin-bottom: 10px;
-            color: #333;
+
+        .suggested-path-section h4 {
+            margin-top: 0;
+            color: #2196F3;
+            font-weight: bold;
         }
-        
-        .extracted-text pre {
-            white-space: pre-wrap;
-            font-size: 0.9rem;
-            color: #666;
-            max-height: 200px;
-            overflow-y: auto;
+
+        .suggested-path-display {
+            font-family: monospace;
+            background-color: #e8f4f8;
+            padding: 10px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-size: 13px;
+            border-left: 4px solid #2196F3;
+        }
+
+        .system-metrics-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 15px;
+            font-size: 11px;
+            font-family: monospace;
+            display: flex;
+            justify-content: space-between;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .system-metrics-footer .metric {
+            margin-right: 20px;
+        }
+
+        .system-metrics-footer .metric:last-child {
+            margin-right: 0;
         }
         
         .status-message {
@@ -563,11 +590,6 @@
         
         <div class="main-content">
             <div class="sidebar">
-                <div class="system-status" id="system-status">
-                    <h4>💻 System-Status</h4>
-                    <div id="system-stats-content">Lade Status...</div>
-                </div>
-
                 <button class="refresh-btn" onclick="loadFiles()">📁 Dateien aktualisieren</button>
 
                 <div class="file-list">
@@ -668,6 +690,11 @@
         // Dokument anzeigen
         function displayDocument(data, filename) {
             const content = `
+                <div class="suggested-path-section">
+                    <h4>📂 Vorgeschlagener Zielpfad:</h4>
+                    <div class="suggested-path-display">${data.suggested_path}</div>
+                </div>
+
                 <div class="document-preview">
                     <div>
                         <img src="${data.preview}" alt="PDF Preview" class="preview-image">
@@ -677,7 +704,7 @@
                         <h3>📂 Klassifizierung</h3>
 
                         <label for="category-select">Kategorie:</label>
-                        <select id="category-select" class="category-select">
+                        <select id="category-select" class="category-select" onchange="updatePath()">
                             ${window.appCategories.map(cat =>
                                 `<option value="${cat}" ${cat === data.suggested_category ? 'selected' : ''}>${cat}</option>`
                             ).join('')}
@@ -696,12 +723,6 @@
                             <div id="directory-list">Lade Verzeichnisstruktur...</div>
                         </div>
 
-                        <label for="custom-path">Oder eigenen Pfad eingeben:</label>
-                        <input type="text" id="custom-path" class="custom-path-input" placeholder="/Pfad/zur/Datei.pdf">
-
-                        <div class="suggested-path" id="suggested-path">
-                            ${data.suggested_path}
-                        </div>
 
                         <div id="smart-suggestions" style="display: none; margin-bottom: 15px;">
                             <h4 style="color: #667eea; margin-bottom: 10px;">🎯 Intelligente Pfadvorschläge</h4>
@@ -710,13 +731,13 @@
 
                         <div class="action-buttons">
                             <button class="btn btn-primary" onclick="executeMove()">
-                                ✅ Ausführen
+                                ✅ Verschieben
                             </button>
                             <button class="btn btn-secondary" onclick="updatePath()">
                                 🔄 Pfad aktualisieren
                             </button>
                             <button class="btn btn-secondary" onclick="findSimilarPaths()" style="background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);">
-                                🔍 Ähnliche Pfade
+                                🎯 Alternative Pfade finden
                             </button>
                             <button class="btn btn-undo" id="undo-btn" onclick="undoLastAction()" disabled>
                                 ↶ Rückgängig
@@ -725,23 +746,15 @@
                     </div>
                 </div>
                 
-                <div class="extracted-text">
-                    <h4>📄 Extrahierter Text (Vorschau):</h4>
-                    <pre>${data.extracted_text}</pre>
-                </div>
             `;
             
             document.getElementById('document-content').innerHTML = content;
 
+            // Verzeichnisstruktur laden
+            loadDirectoryStructure();
+
             // Event-Listener für Kategorie-Änderung und Custom Path
             document.getElementById('category-select').addEventListener('change', updatePath);
-            document.getElementById('custom-path').addEventListener('input', function() {
-                const customPath = this.value;
-                if (customPath) {
-                    document.getElementById('suggested-path').textContent = customPath;
-                    currentDocument.suggested_path = customPath;
-                }
-            });
 
             // Event-Listener für Pfadsuche
             setupPathSearch();
@@ -758,13 +771,19 @@
         // Pfad basierend auf gewählter Kategorie aktualisieren
         function updatePath() {
             if (!currentDocument) return;
-            
+
             const selectedCategory = document.getElementById('category-select').value;
             const filename = currentDocument.original_path.split('/').pop();
             const sortedDir = currentDocument.suggested_path.split('/').slice(0, -2).join('/');
             const newPath = `${sortedDir}/${selectedCategory}/${filename}`;
-            
-            document.getElementById('suggested-path').textContent = newPath;
+
+            // Update both displays (old and new)
+            const oldPathDisplay = document.getElementById('suggested-path');
+            if (oldPathDisplay) oldPathDisplay.textContent = newPath;
+
+            const newPathDisplay = document.querySelector('.suggested-path-display');
+            if (newPathDisplay) newPathDisplay.textContent = newPath;
+
             currentDocument.suggested_path = newPath;
         }
         
@@ -939,63 +958,8 @@
         }
 
         function updateSystemStatus(systemStats, preloadStatus, cachedCount, totalFiles) {
-            const content = document.getElementById('system-stats-content');
-
-            // Tagging-Status
-            let taggingHtml = '';
-            if (preloadStatus.is_running) {
-                const progress = preloadStatus.total_documents > 0 ?
-                    (preloadStatus.processed_documents / preloadStatus.total_documents * 100) : 0;
-
-                taggingHtml = `
-                    <div class="tagging-status">
-                        <strong>🔄 Tagging läuft:</strong><br>
-                        ${preloadStatus.current_document}<br>
-                        <div class="progress-bar" style="position: relative;">
-                            <div class="progress-fill" style="width: ${progress}%"></div>
-                            <div class="progress-text">${preloadStatus.processed_documents}/${preloadStatus.total_documents}</div>
-                        </div>
-                    </div>
-                `;
-            } else if (cachedCount > 0) {
-                taggingHtml = `
-                    <div class="tagging-status" style="background: #d4edda; border-color: #c3e6cb;">
-                        <strong>✅ Tagging abgeschlossen:</strong><br>
-                        ${cachedCount} von ${totalFiles} Dokumenten getaggt
-                    </div>
-                `;
-            }
-
-            content.innerHTML = `
-                ${taggingHtml}
-                <div class="status-grid">
-                    <div class="status-item">
-                        <span>CPU:</span>
-                        <span class="status-value ${systemStats.cpu_percent > 80 ? 'status-warning' : 'status-good'}">
-                            ${systemStats.cpu_percent}%
-                        </span>
-                    </div>
-                    <div class="status-item">
-                        <span>RAM:</span>
-                        <span class="status-value ${systemStats.ram_percent > 80 ? 'status-warning' : 'status-good'}">
-                            ${systemStats.ram_used_gb}/${systemStats.ram_total_gb} GB
-                        </span>
-                    </div>
-                    <div class="status-item">
-                        <span>RAM %:</span>
-                        <span class="status-value ${systemStats.ram_percent > 80 ? 'status-warning' : 'status-good'}">
-                            ${systemStats.ram_percent}%
-                        </span>
-                    </div>
-                    <div class="status-item">
-                        <span>Swap:</span>
-                        <span class="status-value ${systemStats.swap_warning ? 'status-warning' : 'status-good'}">
-                            ${systemStats.swap_used_gb} GB
-                            ${systemStats.swap_warning ? '⚠️' : '✅'}
-                        </span>
-                    </div>
-                </div>
-            `;
+            // Element existiert nicht mehr, nur Footer aktualisieren
+            updateSystemMetricsFooter(systemStats, preloadStatus, cachedCount, totalFiles);
         }
 
         // Intelligentes Refresh-System
@@ -1132,15 +1096,19 @@
             try {
                 const response = await fetch('/api/directory-structure');
                 const data = await response.json();
-                window.appCategories = data.categories || [];
+                // Extract directory names as categories
+                window.appCategories = Object.keys(data).sort();
                 console.log('Loaded categories from API:', window.appCategories);
             } catch (error) {
                 console.error('Error loading categories:', error);
-                // Fallback Kategorien - direkt aus Backend-Code
+                // Fallback Kategorien - aus Documents-Struktur
                 window.appCategories = [
-                    'Steuern', 'Versicherungen', 'Verträge', 'Banken', 'Medizin',
-                    'Behörden', 'Dissertation', 'Notes', 'Arbeit', 'Schöffendienst',
-                    'Fahrzeuge', 'Zeugnis', 'Lesekram', 'Studium', 'Wohnen', 'Sonstiges'
+                    '0001_scanbot', '10_arbeit', '11 finanzen', '12 schriftverkehr',
+                    '13 telefon internet', '14 telekommunikation', '15 versicherung',
+                    '16 wohnen', '17 sonstiges', '18 gesundheit', '19 fahrzeuge',
+                    '1_halle', '20 steuern', '21_gifs', '2 persönliche dokumente',
+                    '3a Gesundheit', '4 Verträge', '5 Finanzen', '6 Politik',
+                    '7 Arbeit', '8 wohnen', '9 Fahrzeuge', 'arbeit', 'Sonstiges'
                 ];
                 console.log('Using fallback categories:', window.appCategories);
             }
@@ -1196,7 +1164,7 @@
 
         async function findSimilarPathsAutomatic(filename) {
             try {
-                const response = await fetch('/api/suggest-similar-paths', {
+                const response = await fetch('/api/suggest-alternative-paths', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1277,11 +1245,92 @@
         }
 
         // DOM ready checker
+        function updateSystemMetricsFooter(systemStats, preloadStatus, cachedCount, totalFiles) {
+            document.getElementById('cpu-usage').textContent = `${systemStats.cpu_percent || 0}%`;
+            document.getElementById('memory-usage').textContent = `${systemStats.memory_percent || 0}%`;
+            document.getElementById('disk-usage').textContent = `${systemStats.disk_usage || 0}%`;
+            document.getElementById('cached-files').textContent = cachedCount || 0;
+
+            // LM Studio status indicator
+            const lmStudioStatus = document.getElementById('lm-studio-status');
+            if (preloadStatus.is_running) {
+                lmStudioStatus.textContent = '🟢';
+                lmStudioStatus.title = 'LM Studio aktiv';
+            } else {
+                lmStudioStatus.textContent = '⚪';
+                lmStudioStatus.title = 'LM Studio bereit';
+            }
+        }
+
+
+        async function loadDirectoryStructure() {
+            try {
+                const response = await fetch('/api/directory-structure');
+                const tree = await response.json();
+
+                const directoryList = document.getElementById('directory-list');
+                if (directoryList) {
+                    directoryList.innerHTML = renderDirectoryTree(tree);
+                }
+            } catch (error) {
+                console.error('Error loading directory structure:', error);
+                const directoryList = document.getElementById('directory-list');
+                if (directoryList) {
+                    directoryList.innerHTML = '<div style="color: red;">Fehler beim Laden der Verzeichnisstruktur</div>';
+                }
+            }
+        }
+
+        function renderDirectoryTree(tree, level = 0) {
+            let html = '';
+            for (const [name, info] of Object.entries(tree)) {
+                const indent = '&nbsp;'.repeat(level * 4);
+                const hasChildren = info.has_children;
+                const icon = hasChildren ? '📁' : '📄';
+
+                html += `
+                    <div class="directory-item" style="margin-left: ${level * 15}px; cursor: pointer;"
+                         onclick="selectDirectory('${info.path}')">
+                        ${icon} ${name}
+                    </div>
+                `;
+
+                if (hasChildren && level < 2) {
+                    html += renderDirectoryTree(info.children, level + 1);
+                }
+            }
+            return html;
+        }
+
+        function selectDirectory(path) {
+            if (currentDocument) {
+                const filename = currentDocument.original_path.split('/').pop();
+                const newPath = path + '/' + filename;
+
+                // Update suggested path display
+                const pathDisplay = document.querySelector('.suggested-path-display');
+                if (pathDisplay) {
+                    pathDisplay.textContent = newPath;
+                }
+
+                currentDocument.suggested_path = newPath;
+            }
+        }
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeApp);
         } else {
             initializeApp();
         }
     </script>
+
+    <!-- System Metrics Footer -->
+    <div class="system-metrics-footer" id="system-metrics-footer">
+        <div class="metric">📊 CPU: <span id="cpu-usage">0%</span></div>
+        <div class="metric">💾 RAM: <span id="memory-usage">0%</span></div>
+        <div class="metric">💽 Disk: <span id="disk-usage">0%</span></div>
+        <div class="metric">📁 Cached: <span id="cached-files">0</span> files</div>
+        <div class="metric">🔄 LM Studio: <span id="lm-studio-status">○</span></div>
+    </div>
 </body>
 </html>

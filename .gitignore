@@ -9,6 +9,7 @@ config.local.*
 config.local.json
 config.local.yaml
 config.local.yml
+config_secret.py
 
 # Python
 __pycache__/
