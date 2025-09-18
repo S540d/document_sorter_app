@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pfad-Management - Document Sorter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .nav-buttons {
+            margin-top: 20px;
+        }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .search-section {
+            background: linear-gradient(145deg, #f8f9fa 0%, #ffffff 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .results-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .similar-paths, .combinations {
+            background: linear-gradient(145deg, #f8f9fa 0%, #ffffff 100%);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .similar-paths h3, .combinations h3 {
+            margin-bottom: 20px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .path-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .path-item:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+        }
+
+        .path-item.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);
+        }
+
+        .path-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .path-full {
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #666;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .similarity-score {
+            display: inline-block;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .combination-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .combination-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+        }
+
+        .combination-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .combination-option {
+            background: linear-gradient(145deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .combination-option:hover {
+            border-color: #667eea;
+            background: linear-gradient(145deg, #f0f4ff 0%, #e8f2ff 100%);
+        }
+
+        .combination-option.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .option-label {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .option-path {
+            font-family: monospace;
+            font-size: 0.9rem;
+            padding: 8px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+
+        .combination-option.selected .option-path {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .action-buttons {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(108, 117, 125, 0.3);
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            font-size: 1.1rem;
+            padding: 40px;
+        }
+
+        .no-results {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            padding: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .results-section {
+                grid-template-columns: 1fr;
+            }
+
+            .combination-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 Pfad-Management</h1>
+            <p>Finde ähnliche Pfade und erstelle intelligente Kombinationen</p>
+            <div class="nav-buttons">
+                <a href="/" class="nav-btn">← Zurück zur Hauptseite</a>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="search-section">
+                <h2>📁 Pfadähnlichkeit suchen</h2>
+                <input type="text" id="filename-input" class="search-input"
+                       placeholder="Dateiname eingeben (z.B. 'Rechnung-Amazon-2024.pdf')">
+                <button id="search-btn" class="search-btn">🔍 Ähnliche Pfade suchen</button>
+            </div>
+
+            <div class="results-section">
+                <div class="similar-paths">
+                    <h3>📂 Ähnliche Pfade</h3>
+                    <div id="similar-paths-list">
+                        <div class="no-results">Geben Sie einen Dateinamen ein, um ähnliche Pfade zu finden</div>
+                    </div>
+                </div>
+
+                <div class="combinations">
+                    <h3>🔗 Pfad-Kombinationen</h3>
+                    <div id="combinations-list">
+                        <div class="no-results">Ähnliche Pfade werden hier zu Kombinationen vorgeschlagen</div>
+                    </div>
+
+                    <div class="action-buttons" id="action-buttons" style="display: none;">
+                        <button class="btn btn-primary" onclick="createSelectedCombination()">
+                            ✅ Ausgewählte Kombination erstellen
+                        </button>
+                        <button class="btn btn-secondary" onclick="clearSelection()">
+                            🔄 Auswahl zurücksetzen
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentResults = null;
+        let selectedCombination = null;
+
+        // Event Listeners
+        document.getElementById('search-btn').addEventListener('click', searchSimilarPaths);
+        document.getElementById('filename-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchSimilarPaths();
+            }
+        });
+
+        async function searchSimilarPaths() {
+            const filename = document.getElementById('filename-input').value.trim();
+
+            if (!filename) {
+                alert('Bitte geben Sie einen Dateinamen ein');
+                return;
+            }
+
+            // Loading anzeigen
+            document.getElementById('similar-paths-list').innerHTML = '<div class="loading">🔍 Suche ähnliche Pfade...</div>';
+            document.getElementById('combinations-list').innerHTML = '<div class="loading">🔗 Erstelle Kombinationen...</div>';
+
+            try {
+                const response = await fetch('/api/suggest-similar-paths', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ filename: filename })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentResults = data;
+                    displaySimilarPaths(data.similar_paths);
+                    displayCombinations(data.combinations);
+                } else {
+                    showError(data.error);
+                }
+            } catch (error) {
+                console.error('Error searching similar paths:', error);
+                showError('Fehler beim Suchen ähnlicher Pfade');
+            }
+        }
+
+        function displaySimilarPaths(similarPaths) {
+            const container = document.getElementById('similar-paths-list');
+
+            if (!similarPaths || similarPaths.length === 0) {
+                container.innerHTML = '<div class="no-results">Keine ähnlichen Pfade gefunden</div>';
+                return;
+            }
+
+            container.innerHTML = similarPaths.map(path => `
+                <div class="path-item" onclick="selectPath('${path.path}')">
+                    <div class="path-name">📁 ${path.directory}</div>
+                    <div class="path-full">${path.path}</div>
+                    <span class="similarity-score">${(path.similarity * 100).toFixed(1)}% Ähnlichkeit</span>
+                </div>
+            `).join('');
+        }
+
+        function displayCombinations(combinations) {
+            const container = document.getElementById('combinations-list');
+
+            if (!combinations || combinations.length === 0) {
+                container.innerHTML = '<div class="no-results">Keine Kombinationen verfügbar</div>';
+                return;
+            }
+
+            container.innerHTML = combinations.map((combo, index) => `
+                <div class="combination-item">
+                    <div style="font-weight: 600; margin-bottom: 10px;">
+                        🔗 ${combo.path_a.directory} + ${combo.path_b.directory}
+                        <span class="similarity-score">${(combo.combined_similarity * 100).toFixed(1)}% Match</span>
+                    </div>
+
+                    <div class="combination-options">
+                        <div class="combination-option" onclick="selectCombination(${index}, 'ab')">
+                            <div class="option-label">Option A: ${combo.path_a.directory}/${combo.path_b.directory}</div>
+                            <div class="option-path">${combo.combined_path_ab}</div>
+                        </div>
+
+                        <div class="combination-option" onclick="selectCombination(${index}, 'ba')">
+                            <div class="option-label">Option B: ${combo.path_b.directory}/${combo.path_a.directory}</div>
+                            <div class="option-path">${combo.combined_path_ba}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectPath(path) {
+            // Markiere ausgewählten Pfad
+            document.querySelectorAll('.path-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            event.target.closest('.path-item').classList.add('selected');
+        }
+
+        function selectCombination(comboIndex, option) {
+            // Entferne alle vorherigen Auswahlen
+            document.querySelectorAll('.combination-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+
+            // Markiere ausgewählte Option
+            event.target.closest('.combination-option').classList.add('selected');
+
+            // Speichere Auswahl
+            selectedCombination = {
+                index: comboIndex,
+                option: option,
+                data: currentResults.combinations[comboIndex]
+            };
+
+            // Zeige Action Buttons
+            document.getElementById('action-buttons').style.display = 'block';
+        }
+
+        async function createSelectedCombination() {
+            if (!selectedCombination) {
+                alert('Bitte wählen Sie zuerst eine Kombination aus');
+                return;
+            }
+
+            const combo = selectedCombination.data;
+            const selectedPath = selectedCombination.option === 'ab' ?
+                combo.combined_path_ab : combo.combined_path_ba;
+
+            try {
+                // Hier würde normalerweise ein API-Call zum Erstellen des Pfads gemacht
+                const confirmation = confirm(`Möchten Sie den folgenden Pfad erstellen?\n\n${selectedPath}`);
+
+                if (confirmation) {
+                    // Simuliere Pfad-Erstellung
+                    alert(`✅ Pfad erstellt: ${selectedPath}\n\n(In der echten Implementierung würde hier der Pfad im Dateisystem erstellt werden)`);
+                    clearSelection();
+                }
+            } catch (error) {
+                console.error('Error creating combination:', error);
+                alert('Fehler beim Erstellen der Kombination');
+            }
+        }
+
+        function clearSelection() {
+            selectedCombination = null;
+            document.querySelectorAll('.combination-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            document.getElementById('action-buttons').style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('similar-paths-list').innerHTML = `<div class="no-results">❌ ${message}</div>`;
+            document.getElementById('combinations-list').innerHTML = '<div class="no-results">Keine Kombinationen verfügbar</div>';
+        }
+    </script>
+</body>
+</html>

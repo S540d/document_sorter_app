@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Sorter MVP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" patternUnits="userSpaceOnUse" width="100" height="100"><rect width="100" height="100" fill="%23ffffff" opacity="0.03"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+        
+        .sidebar {
+            background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 30px;
+            border-right: 1px solid #dee2e6;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        }
+        
+        .file-list {
+            margin-bottom: 30px;
+        }
+        
+        .file-item {
+            background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .file-item:hover {
+            border-color: #667eea;
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+            background: linear-gradient(145deg, #ffffff 0%, #f0f4ff 100%);
+        }
+        
+        .file-item.active {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .file-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            word-break: break-all;
+        }
+        
+        .file-meta {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+        
+        .refresh-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .document-view {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            font-size: 1.2rem;
+            margin: 50px 0;
+        }
+        
+        .document-preview {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+            margin-bottom: 30px;
+            position: sticky;
+            top: 20px;
+            z-index: 10;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .preview-image {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .classification-panel {
+            background: linear-gradient(145deg, #f8f9fa 0%, #ffffff 100%);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        
+        .classification-panel h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .category-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+
+        .path-browser {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .path-browser.collapsed {
+            max-height: 40px;
+            overflow: hidden;
+        }
+
+        .path-browser-header {
+            background: #e9ecef;
+            padding: 10px;
+            font-weight: bold;
+            border-bottom: 1px solid #dee2e6;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .path-browser-header:hover {
+            background: #dee2e6;
+        }
+
+        .collapse-icon {
+            transition: transform 0.2s;
+        }
+
+        .collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .directory-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(233, 236, 239, 0.5);
+            transition: all 0.3s ease;
+            border-radius: 6px;
+            margin: 2px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .directory-item .expand-icon {
+            font-size: 12px;
+            transition: transform 0.2s;
+            color: #6c757d;
+            width: 12px;
+        }
+
+        .directory-item.expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+
+        .directory-item.no-children .expand-icon {
+            opacity: 0;
+        }
+
+        .directory-item:hover {
+            background: linear-gradient(135deg, #e8f4fd 0%, #d1ecf1 100%);
+            transform: translateX(3px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .directory-item.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            transform: translateX(5px);
+        }
+
+        .directory-item.selected .expand-icon {
+            color: white;
+        }
+
+        .directory-level-0 { padding-left: 15px; }
+        .directory-level-1 { padding-left: 35px; display: none; }
+        .directory-level-2 { padding-left: 55px; display: none; }
+        .directory-level-3 { padding-left: 75px; display: none; }
+        .directory-level-4 { padding-left: 95px; display: none; }
+
+        .directory-item.show { display: flex !important; }
+
+        .preloaded-indicator {
+            background: #d4edda;
+            color: #155724;
+            font-size: 0.8rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 5px;
+        }
+
+        .suggested-category-badge {
+            background: #fff3cd;
+            color: #856404;
+            font-size: 0.8rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 5px;
+        }
+
+        .custom-path-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .path-search-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .path-search-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .autocomplete-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background: #f8f9fa;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .smart-suggestion {
+            background: linear-gradient(145deg, #fff3cd 0%, #ffeaa7 100%);
+            border: 1px solid #f4d03f;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .smart-suggestion:hover {
+            background: linear-gradient(145deg, #ffeaa7 0%, #f4d03f 100%);
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(244, 208, 63, 0.3);
+        }
+
+        .suggestion-path {
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .suggestion-score {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .system-status {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .system-status h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+        }
+
+        .status-value {
+            font-weight: bold;
+        }
+
+        .status-warning {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .status-good {
+            color: #28a745;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 0.8rem;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            position: absolute;
+            width: 100%;
+        }
+
+        .tagging-status {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+        }
+        
+        .suggested-path {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            word-break: break-all;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-undo {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-undo:hover {
+            background: #e0a800;
+        }
+
+        .btn-undo:disabled {
+            background: #6c757d;
+            color: #adb5bd;
+            cursor: not-allowed;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #218838;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .extracted-text {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .extracted-text h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .extracted-text pre {
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            color: #666;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .document-preview {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 Document Sorter</h1>
+            <p>KI-gestützte Dokumentensortierung mit DeepSeek R3</p>
+            <div style="margin-top: 20px;">
+                <a href="/path-management" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 25px; text-decoration: none; transition: all 0.3s ease;">
+                    🔗 Pfad-Management
+                </a>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="system-status" id="system-status">
+                    <h4>💻 System-Status</h4>
+                    <div id="system-stats-content">Lade Status...</div>
+                </div>
+
+                <button class="refresh-btn" onclick="loadFiles()">📁 Dateien aktualisieren</button>
+
+                <div class="file-list">
+                    <h3>Zu sortierende PDFs:</h3>
+                    <div id="file-list-container">
+                        <div class="loading">Lade Dateien...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="document-view">
+                <div id="status-container"></div>
+                
+                <div id="document-content">
+                    <div class="loading">Wähle eine Datei aus der Liste</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentDocument = null;
+        let lastAction = null;
+        let allDirectories = [];
+        let directoryStructure = {};
+        window.appCategories = [];
+        
+        // Dateien aus Scan-Verzeichnis laden
+        async function loadFiles() {
+            try {
+                const response = await fetch('/api/scan-files');
+                const data = await response.json();
+                
+                const container = document.getElementById('file-list-container');
+                
+                if (data.files && data.files.length > 0) {
+                    container.innerHTML = data.files.map(file => `
+                        <div class="file-item" onclick="selectFile('${file.path}', '${file.name}')">
+                            <div class="file-name">
+                                ${file.name}
+                                ${file.preloaded ? '<span class="preloaded-indicator">⚡ Geladen</span>' : ''}
+                                ${file.suggested_category ? `<span class="suggested-category-badge">${file.suggested_category}</span>` : ''}
+                            </div>
+                            <div class="file-meta">
+                                ${(file.size / 1024).toFixed(1)} KB<br>
+                                ${new Date(file.modified).toLocaleString('de-DE')}
+                            </div>
+                        </div>
+                    `).join('');
+
+                    // System-Status aktualisieren
+                    updateSystemStatus(data.system_stats, data.preload_status, data.cached_count, data.files.length);
+                } else {
+                    container.innerHTML = '<div class="loading">Keine PDF-Dateien gefunden</div>';
+                }
+            } catch (error) {
+                console.error('Error loading files:', error);
+                document.getElementById('file-list-container').innerHTML = 
+                    '<div class="loading">Fehler beim Laden der Dateien</div>';
+            }
+        }
+        
+        // Datei auswählen und verarbeiten
+        async function selectFile(path, name) {
+            // UI-Update: Aktive Datei markieren
+            document.querySelectorAll('.file-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.closest('.file-item').classList.add('active');
+            
+            // Loading-Anzeige
+            document.getElementById('document-content').innerHTML = 
+                '<div class="loading">Verarbeite Dokument...</div>';
+            
+            try {
+                const response = await fetch('/api/process-document', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ path: path })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentDocument = data;
+                    displayDocument(data, name);
+                } else {
+                    showStatus(`Fehler: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error processing document:', error);
+                showStatus('Fehler bei der Dokumentenverarbeitung', 'error');
+            }
+        }
+        
+        // Dokument anzeigen
+        function displayDocument(data, filename) {
+            const content = `
+                <div class="document-preview">
+                    <div>
+                        <img src="${data.preview}" alt="PDF Preview" class="preview-image">
+                    </div>
+                    
+                    <div class="classification-panel">
+                        <h3>📂 Klassifizierung</h3>
+
+                        <label for="category-select">Kategorie:</label>
+                        <select id="category-select" class="category-select">
+                            ${window.appCategories.map(cat =>
+                                `<option value="${cat}" ${cat === data.suggested_category ? 'selected' : ''}>${cat}</option>`
+                            ).join('')}
+                        </select>
+
+                        <div class="path-search-container">
+                            <input type="text" id="path-search" class="path-search-input" placeholder="Suche nach Pfad (z.B. 'Lesekram')">
+                            <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+                        </div>
+
+                        <div class="path-browser" id="path-browser">
+                            <div class="path-browser-header" onclick="togglePathBrowser()">
+                                📁 Verfügbare Pfade
+                                <span class="collapse-icon">▼</span>
+                            </div>
+                            <div id="directory-list">Lade Verzeichnisstruktur...</div>
+                        </div>
+
+                        <label for="custom-path">Oder eigenen Pfad eingeben:</label>
+                        <input type="text" id="custom-path" class="custom-path-input" placeholder="/Pfad/zur/Datei.pdf">
+
+                        <div class="suggested-path" id="suggested-path">
+                            ${data.suggested_path}
+                        </div>
+
+                        <div id="smart-suggestions" style="display: none; margin-bottom: 15px;">
+                            <h4 style="color: #667eea; margin-bottom: 10px;">🎯 Intelligente Pfadvorschläge</h4>
+                            <div id="suggestion-list"></div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button class="btn btn-primary" onclick="executeMove()">
+                                ✅ Ausführen
+                            </button>
+                            <button class="btn btn-secondary" onclick="updatePath()">
+                                🔄 Pfad aktualisieren
+                            </button>
+                            <button class="btn btn-secondary" onclick="findSimilarPaths()" style="background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);">
+                                🔍 Ähnliche Pfade
+                            </button>
+                            <button class="btn btn-undo" id="undo-btn" onclick="undoLastAction()" disabled>
+                                ↶ Rückgängig
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="extracted-text">
+                    <h4>📄 Extrahierter Text (Vorschau):</h4>
+                    <pre>${data.extracted_text}</pre>
+                </div>
+            `;
+            
+            document.getElementById('document-content').innerHTML = content;
+
+            // Event-Listener für Kategorie-Änderung und Custom Path
+            document.getElementById('category-select').addEventListener('change', updatePath);
+            document.getElementById('custom-path').addEventListener('input', function() {
+                const customPath = this.value;
+                if (customPath) {
+                    document.getElementById('suggested-path').textContent = customPath;
+                    currentDocument.suggested_path = customPath;
+                }
+            });
+
+            // Event-Listener für Pfadsuche
+            setupPathSearch();
+
+            // Lade Verzeichnisstruktur
+            loadDirectoryStructure();
+
+            // Automatisch ähnliche Pfade suchen wenn Dokument geladen
+            if (filename) {
+                findSimilarPathsAutomatic(filename);
+            }
+        }
+        
+        // Pfad basierend auf gewählter Kategorie aktualisieren
+        function updatePath() {
+            if (!currentDocument) return;
+            
+            const selectedCategory = document.getElementById('category-select').value;
+            const filename = currentDocument.original_path.split('/').pop();
+            const sortedDir = currentDocument.suggested_path.split('/').slice(0, -2).join('/');
+            const newPath = `${sortedDir}/${selectedCategory}/${filename}`;
+            
+            document.getElementById('suggested-path').textContent = newPath;
+            currentDocument.suggested_path = newPath;
+        }
+        
+        // Move-Operation ausführen
+        async function executeMove() {
+            if (!currentDocument) return;
+            
+            const finalPath = document.getElementById('suggested-path').textContent;
+            
+            try {
+                const response = await fetch('/api/move-document', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        source_path: currentDocument.original_path,
+                        target_path: finalPath
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Speichere letzte Aktion für Undo
+                    lastAction = {
+                        type: 'move',
+                        source_path: finalPath,
+                        target_path: currentDocument.original_path,
+                        timestamp: new Date().toISOString()
+                    };
+                    document.getElementById('undo-btn').disabled = false;
+
+                    showStatus(`✅ Datei erfolgreich verschoben nach: ${finalPath}`, 'success');
+                    // Dateiliste neu laden
+                    setTimeout(() => {
+                        loadFiles();
+                        document.getElementById('document-content').innerHTML =
+                            '<div class="loading">Wähle eine neue Datei aus der Liste</div>';
+                    }, 2000);
+                } else {
+                    showStatus(`❌ Fehler: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error moving document:', error);
+                showStatus('❌ Fehler beim Verschieben der Datei', 'error');
+            }
+        }
+        
+        // Status-Nachricht anzeigen
+        function showStatus(message, type) {
+            const statusContainer = document.getElementById('status-container');
+            statusContainer.innerHTML = `
+                <div class="status-message status-${type}">
+                    ${message}
+                </div>
+            `;
+            
+            // Nach 5 Sekunden automatisch ausblenden
+            setTimeout(() => {
+                statusContainer.innerHTML = '';
+            }, 5000);
+        }
+        
+        // Neue Funktionen für Verzeichnisstruktur
+        async function loadDirectoryStructure() {
+            try {
+                const response = await fetch('/api/directory-structure');
+                const data = await response.json();
+
+                const directoryList = document.getElementById('directory-list');
+                directoryList.innerHTML = '';
+
+                // Speichere Struktur für spätere Nutzung
+                directoryStructure = data.structure;
+
+                // Erstelle flache Liste für Autocomplete
+                allDirectories = flattenDirectoryForAutocomplete(data.structure, data.base_path);
+
+                // Rendere hierarchische Ansicht
+                directoryList.innerHTML = '';
+                renderDirectoryStructure(data.structure, data.base_path, directoryList);
+
+            } catch (error) {
+                console.error('Error loading directory structure:', error);
+                document.getElementById('directory-list').innerHTML =
+                    '<div style="padding: 10px; color: #666;">Fehler beim Laden der Verzeichnisstruktur</div>';
+            }
+        }
+
+        function renderDirectoryStructure(structure, basePath, container, level = 0) {
+            for (const [name, children] of Object.entries(structure)) {
+                const fullPath = `${basePath}/${name}`;
+                const hasChildren = Object.keys(children).length > 0;
+
+                const div = document.createElement('div');
+                div.className = `directory-item directory-level-${level} ${!hasChildren ? 'no-children' : ''} ${level > 0 ? '' : 'show'}`;
+                div.dataset.path = fullPath;
+                div.dataset.level = level;
+
+                const expandIcon = hasChildren ? '▶' : '';
+                div.innerHTML = `
+                    <span class="expand-icon">${expandIcon}</span>
+                    <span>📁 ${name}</span>
+                `;
+
+                div.onclick = (e) => {
+                    e.stopPropagation();
+
+                    // Verzeichnis auswählen
+                    selectDirectory(fullPath);
+
+                    // Aufklappen/Zuklappen wenn Kinder vorhanden
+                    if (hasChildren) {
+                        toggleDirectoryExpansion(div, level);
+                    }
+                };
+
+                container.appendChild(div);
+
+                // Kinder hinzufügen (initial versteckt)
+                if (hasChildren) {
+                    renderDirectoryStructure(children, fullPath, container, level + 1);
+                }
+            }
+        }
+
+        function toggleDirectoryExpansion(dirElement, level) {
+            const isExpanded = dirElement.classList.contains('expanded');
+            dirElement.classList.toggle('expanded');
+
+            // Alle Kinder-Elemente finden und ein-/ausblenden
+            let nextElement = dirElement.nextElementSibling;
+            while (nextElement && parseInt(nextElement.dataset.level) > level) {
+                const elementLevel = parseInt(nextElement.dataset.level);
+
+                if (elementLevel === level + 1) {
+                    // Direkte Kinder
+                    if (isExpanded) {
+                        nextElement.classList.remove('show');
+                        nextElement.classList.remove('expanded'); // Zuklappen von Unter-Verzeichnissen
+                    } else {
+                        nextElement.classList.add('show');
+                    }
+                } else if (elementLevel > level + 1) {
+                    // Enkel und tiefer - immer verstecken wenn Eltern zugeklappt werden
+                    if (isExpanded) {
+                        nextElement.classList.remove('show');
+                        nextElement.classList.remove('expanded');
+                    }
+                }
+
+                nextElement = nextElement.nextElementSibling;
+            }
+        }
+
+        function selectDirectory(dirPath) {
+            // Markiere ausgewähltes Verzeichnis
+            document.querySelectorAll('.directory-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+
+            // Aktualisiere Pfad mit aktueller Datei
+            if (currentDocument) {
+                const filename = currentDocument.original_path.split('/').pop();
+                const newPath = `${dirPath}/${filename}`;
+                document.getElementById('suggested-path').textContent = newPath;
+                document.getElementById('custom-path').value = newPath;
+                currentDocument.suggested_path = newPath;
+            }
+        }
+
+        function updateSystemStatus(systemStats, preloadStatus, cachedCount, totalFiles) {
+            const content = document.getElementById('system-stats-content');
+
+            // Tagging-Status
+            let taggingHtml = '';
+            if (preloadStatus.is_running) {
+                const progress = preloadStatus.total_documents > 0 ?
+                    (preloadStatus.processed_documents / preloadStatus.total_documents * 100) : 0;
+
+                taggingHtml = `
+                    <div class="tagging-status">
+                        <strong>🔄 Tagging läuft:</strong><br>
+                        ${preloadStatus.current_document}<br>
+                        <div class="progress-bar" style="position: relative;">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                            <div class="progress-text">${preloadStatus.processed_documents}/${preloadStatus.total_documents}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (cachedCount > 0) {
+                taggingHtml = `
+                    <div class="tagging-status" style="background: #d4edda; border-color: #c3e6cb;">
+                        <strong>✅ Tagging abgeschlossen:</strong><br>
+                        ${cachedCount} von ${totalFiles} Dokumenten getaggt
+                    </div>
+                `;
+            }
+
+            content.innerHTML = `
+                ${taggingHtml}
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span>CPU:</span>
+                        <span class="status-value ${systemStats.cpu_percent > 80 ? 'status-warning' : 'status-good'}">
+                            ${systemStats.cpu_percent}%
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span>RAM:</span>
+                        <span class="status-value ${systemStats.ram_percent > 80 ? 'status-warning' : 'status-good'}">
+                            ${systemStats.ram_used_gb}/${systemStats.ram_total_gb} GB
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span>RAM %:</span>
+                        <span class="status-value ${systemStats.ram_percent > 80 ? 'status-warning' : 'status-good'}">
+                            ${systemStats.ram_percent}%
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span>Swap:</span>
+                        <span class="status-value ${systemStats.swap_warning ? 'status-warning' : 'status-good'}">
+                            ${systemStats.swap_used_gb} GB
+                            ${systemStats.swap_warning ? '⚠️' : '✅'}
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Intelligentes Refresh-System
+        let refreshInterval;
+
+        function startSmartRefresh() {
+            // Refresh nur während Preloading aktiv ist
+            if (refreshInterval) clearInterval(refreshInterval);
+
+            refreshInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/system-status');
+                    const data = await response.json();
+
+                    updateSystemStatus(data.system_stats, data.preload_status, data.cached_count, 0);
+
+                    // Stoppe Auto-Refresh wenn Preloading fertig
+                    if (!data.preload_status.is_running && data.preload_complete) {
+                        clearInterval(refreshInterval);
+                        console.log("Preloading complete - stopping auto-refresh");
+                    }
+                } catch (error) {
+                    console.error('Error updating status:', error);
+                }
+            }, 3000); // Alle 3 Sekunden während Preloading
+        }
+
+        // Neue Funktionen
+        function togglePathBrowser() {
+            const pathBrowser = document.getElementById('path-browser');
+            pathBrowser.classList.toggle('collapsed');
+        }
+
+        function setupPathSearch() {
+            const searchInput = document.getElementById('path-search');
+            const dropdown = document.getElementById('autocomplete-dropdown');
+            let selectedIndex = -1;
+
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                if (query.length === 0) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                const matches = allDirectories.filter(dir =>
+                    dir.name.toLowerCase().includes(query) ||
+                    dir.path.toLowerCase().includes(query)
+                ).slice(0, 10); // Limit zu 10 Ergebnissen
+
+                if (matches.length > 0) {
+                    dropdown.innerHTML = matches.map((dir, index) => `
+                        <div class="autocomplete-item" data-index="${index}" data-path="${dir.path}">
+                            ${dir.display}
+                        </div>
+                    `).join('');
+                    dropdown.style.display = 'block';
+                    selectedIndex = -1;
+                } else {
+                    dropdown.style.display = 'none';
+                }
+            });
+
+            searchInput.addEventListener('keydown', function(e) {
+                const items = dropdown.querySelectorAll('.autocomplete-item');
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                    updateSelection(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, -1);
+                    updateSelection(items);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && items[selectedIndex]) {
+                        selectFromAutocomplete(items[selectedIndex].dataset.path);
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdown.style.display = 'none';
+                    selectedIndex = -1;
+                }
+            });
+
+            dropdown.addEventListener('click', function(e) {
+                if (e.target.classList.contains('autocomplete-item')) {
+                    selectFromAutocomplete(e.target.dataset.path);
+                }
+            });
+
+            function updateSelection(items) {
+                items.forEach((item, index) => {
+                    item.classList.toggle('selected', index === selectedIndex);
+                });
+            }
+
+            function selectFromAutocomplete(path) {
+                selectDirectory(path);
+                searchInput.value = '';
+                dropdown.style.display = 'none';
+                selectedIndex = -1;
+            }
+
+            // Schließe Dropdown bei Klick außerhalb
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.style.display = 'none';
+                }
+            });
+        }
+
+        function flattenDirectoryForAutocomplete(structure, basePath, level = 0, result = []) {
+            for (const [name, children] of Object.entries(structure)) {
+                const fullPath = `${basePath}/${name}`;
+                const display = '  '.repeat(level) + (level > 0 ? '📁 ' : '') + name;
+
+                result.push({
+                    name: name,
+                    path: fullPath,
+                    display: display,
+                    level: level
+                });
+
+                if (Object.keys(children).length > 0) {
+                    flattenDirectoryForAutocomplete(children, fullPath, level + 1, result);
+                }
+            }
+            return result;
+        }
+
+        // Kategorien vom Backend laden
+        async function loadCategories() {
+            try {
+                const response = await fetch('/api/directory-structure');
+                const data = await response.json();
+                window.appCategories = data.categories || [];
+                console.log('Loaded categories from API:', window.appCategories);
+            } catch (error) {
+                console.error('Error loading categories:', error);
+                // Fallback Kategorien - direkt aus Backend-Code
+                window.appCategories = [
+                    'Steuern', 'Versicherungen', 'Verträge', 'Banken', 'Medizin',
+                    'Behörden', 'Dissertation', 'Notes', 'Arbeit', 'Schöffendienst',
+                    'Fahrzeuge', 'Zeugnis', 'Lesekram', 'Studium', 'Wohnen', 'Sonstiges'
+                ];
+                console.log('Using fallback categories:', window.appCategories);
+            }
+        }
+
+        async function undoLastAction() {
+            if (!lastAction) return;
+
+            try {
+                const response = await fetch('/api/move-document', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        source_path: lastAction.source_path,
+                        target_path: lastAction.target_path
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus(`↶ Aktion rückgängig gemacht: Datei zurück nach ${lastAction.target_path}`, 'success');
+                    lastAction = null;
+                    document.getElementById('undo-btn').disabled = true;
+
+                    // Dateiliste neu laden
+                    setTimeout(() => {
+                        loadFiles();
+                        document.getElementById('document-content').innerHTML =
+                            '<div class="loading">Wähle eine neue Datei aus der Liste</div>';
+                    }, 2000);
+                } else {
+                    showStatus(`❌ Fehler beim Rückgängigmachen: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error undoing action:', error);
+                showStatus('❌ Fehler beim Rückgängigmachen der Aktion', 'error');
+            }
+        }
+
+        // Intelligente Pfadvorschläge
+        async function findSimilarPaths() {
+            if (!currentDocument) {
+                alert('Bitte wählen Sie zuerst ein Dokument aus');
+                return;
+            }
+
+            const filename = currentDocument.original_path.split('/').pop();
+            await findSimilarPathsAutomatic(filename);
+        }
+
+        async function findSimilarPathsAutomatic(filename) {
+            try {
+                const response = await fetch('/api/suggest-similar-paths', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ filename: filename })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.similar_paths && data.similar_paths.length > 0) {
+                    displaySmartSuggestions(data.similar_paths.slice(0, 3)); // Top 3 Vorschläge
+                }
+            } catch (error) {
+                console.error('Error finding similar paths:', error);
+            }
+        }
+
+        function displaySmartSuggestions(suggestions) {
+            const container = document.getElementById('suggestion-list');
+            const smartSuggestionsDiv = document.getElementById('smart-suggestions');
+
+            if (suggestions.length === 0) {
+                smartSuggestionsDiv.style.display = 'none';
+                return;
+            }
+
+            container.innerHTML = suggestions.map(suggestion => `
+                <div class="smart-suggestion" onclick="applySuggestion('${suggestion.path}')">
+                    <div class="suggestion-path">📁 ${suggestion.path}</div>
+                    <div class="suggestion-score">🎯 ${(suggestion.similarity * 100).toFixed(1)}% Ähnlichkeit mit "${suggestion.directory}"</div>
+                </div>
+            `).join('');
+
+            smartSuggestionsDiv.style.display = 'block';
+        }
+
+        function applySuggestion(suggestedPath) {
+            if (!currentDocument) return;
+
+            const filename = currentDocument.original_path.split('/').pop();
+            const fullPath = `${suggestedPath}/${filename}`;
+
+            document.getElementById('suggested-path').textContent = fullPath;
+            document.getElementById('custom-path').value = fullPath;
+            currentDocument.suggested_path = fullPath;
+
+            // Verstecke Vorschläge nach Auswahl
+            document.getElementById('smart-suggestions').style.display = 'none';
+
+            // Visual Feedback
+            const pathElement = document.getElementById('suggested-path');
+            pathElement.style.background = '#d4edda';
+            pathElement.style.border = '2px solid #28a745';
+
+            setTimeout(() => {
+                pathElement.style.background = '#e8f5e8';
+                pathElement.style.border = '1px solid #ddd';
+            }, 2000);
+        }
+
+        // Initial laden und Smart Refresh starten
+        async function initializeApp() {
+            console.log('Initializing app...');
+            try {
+                await loadCategories();
+                console.log('Categories loaded:', window.appCategories);
+                await loadFiles();
+                console.log('Files loaded');
+                startSmartRefresh();
+                console.log('Smart refresh started');
+            } catch (error) {
+                console.error('Initialization error:', error);
+                // Fallback: Versuche trotzdem zu laden
+                window.appCategories = ['Sonstiges'];
+                loadFiles();
+                startSmartRefresh();
+            }
+        }
+
+        // DOM ready checker
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+    </script>
+</body>
+</html>
