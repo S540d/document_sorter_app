@@ -107,7 +107,7 @@
             color: #666;
         }
         
-        .refresh-btn {
+        .refresh-btn, .random-btn {
             background: #667eea;
             color: white;
             border: none;
@@ -116,11 +116,20 @@
             cursor: pointer;
             width: 100%;
             font-size: 1rem;
+            margin-bottom: 10px;
+        }
+        
+        .refresh-btn:hover, .random-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .random-btn {
+            background: #38a169;
             margin-bottom: 20px;
         }
         
-        .refresh-btn:hover {
-            background: #5a6fd8;
+        .random-btn:hover {
+            background: #2f855a;
         }
         
         .document-view {
@@ -591,6 +600,7 @@
         <div class="main-content">
             <div class="sidebar">
                 <button class="refresh-btn" onclick="loadFiles()">📁 Dateien aktualisieren</button>
+                <button class="random-btn" onclick="selectRandomDocument()">🎲 Zufälliges Dokument</button>
 
                 <div class="file-list">
                     <h3>Zu sortierende PDFs:</h3>
@@ -736,9 +746,6 @@
                             <button class="btn btn-secondary" onclick="updatePath()">
                                 🔄 Pfad aktualisieren
                             </button>
-                            <button class="btn btn-secondary" onclick="findSimilarPaths()" style="background: linear-gradient(135deg, #ffc107 0%, #ff8c00 100%);">
-                                🎯 Alternative Pfade finden
-                            </button>
                             <button class="btn btn-undo" id="undo-btn" onclick="undoLastAction()" disabled>
                                 ↶ Rückgängig
                             </button>
@@ -830,6 +837,35 @@
             } catch (error) {
                 console.error('Error moving document:', error);
                 showStatus('❌ Fehler beim Verschieben der Datei', 'error');
+            }
+        }
+        
+        // Zufälliges Dokument auswählen
+        async function selectRandomDocument() {
+            try {
+                const response = await fetch('/api/random-document');
+                const randomDoc = await response.json();
+                
+                if (response.ok) {
+                    // Vorhandene selectFile Funktion aufrufen
+                    selectFile(randomDoc.path, randomDoc.name);
+                    
+                    // Visuelles Feedback
+                    const fileItems = document.querySelectorAll('.file-item');
+                    fileItems.forEach(item => {
+                        if (item.querySelector('.file-name').textContent.includes(randomDoc.name)) {
+                            item.classList.add('active');
+                            item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        } else {
+                            item.classList.remove('active');
+                        }
+                    });
+                } else {
+                    showStatus(`❌ Fehler: ${randomDoc.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error selecting random document:', error);
+                showStatus('❌ Fehler beim Auswählen eines zufälligen Dokuments', 'error');
             }
         }
         

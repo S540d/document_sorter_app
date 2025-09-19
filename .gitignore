@@ -48,6 +48,9 @@ ENV/
 *.swo
 *~
 
+# Claude AI settings (contains personal paths and permissions)
+.claude/
+
 # OS
 .DS_Store
 .DS_Store?

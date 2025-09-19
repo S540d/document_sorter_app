@@ -10,7 +10,8 @@
       "Bash(pkill:*)",
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
-      "Read(//Users/svenstrohkark/Documents/**)"
+      "Read(//Users/svenstrohkark/Documents/**)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
