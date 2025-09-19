@@ -1,368 +1,227 @@
-#!/usr/bin/env python3#!/usr/bin/env python3
+#!/usr/bin/env python3
+"""
+Document Sorter MVP
+Webapp für automatische Dokumentensortierung mit DeepSeek R3
+"""
 
-""""""
+import os
+import shutil
+import base64
+import random
+import time
+from pathlib import Path
+from flask import Flask, render_template, request, jsonify
+import fitz  # PyMuPDF für PDF-Verarbeitung
+import requests
+import json
+from datetime import datetime
+from app.monitoring import get_logger, log_performance, log_security_event, ErrorReporter, LogAggregator
+from app.monitoring.performance_tracker import get_performance_tracker
 
-Document Sorter MVPDocument Sorter MVP
-
-Webapp für automatische Dokumentensortierung mit DeepSeek R3Webapp für automatische Dokumentensortierung mit DeepSeek R3
-
-""""""
-
-
-
-import osimport os
-
-from flask import Flask, render_template, request, jsonifyfrom flask import Flask, render_template, request, jsonify
-
-
-
-from app.config import ConfigManagerfrom app.config import ConfigManager
-
-from app.services import PDFService, FileService, LLMServicefrom app.services import PDFService, FileService, LLMService
-
-
-
-# Konfiguration und Services initialisierentry:
-
-config = ConfigManager()    from config_secret import LM_STUDIO_URL, SCAN_DIR, SORTED_DIR, DEBUG_MODE, PORT, HOST
-
-pdf_service = PDFService()except ImportError:
-
-file_service = FileService()    print("Warning: config.secret.py nicht gefunden. Verwende Standardwerte.")
-
-llm_service = LLMService()    LM_STUDIO_URL = 'http://localhost:1234/v1/chat/completions'
-
+try:
+    from config_secret import LM_STUDIO_URL, SCAN_DIR, SORTED_DIR, DEBUG_MODE, PORT, HOST
+except ImportError:
+    print("Warning: config.secret.py nicht gefunden. Verwende Standardwerte.")
+    LM_STUDIO_URL = 'http://localhost:1234/v1/chat/completions'
     SCAN_DIR = './scans'
-
-# Flask App initialisieren    SORTED_DIR = './sorted'
-
-app = Flask(__name__)    DEBUG_MODE = True
-
+    SORTED_DIR = './sorted'
+    DEBUG_MODE = True
     PORT = 5000
+    HOST = '127.0.0.1'
 
-@app.route('/')    HOST = '127.0.0.1'
 
-def index():
+app = Flask(__name__)
 
-    """Hauptseite der Webapp"""
+# Monitoring Services initialisieren
+logger = get_logger('document_sorter')
+error_reporter = ErrorReporter()
+log_aggregator = LogAggregator()
+performance_tracker = get_performance_tracker()
 
-    categories = file_service.get_smart_categories()app = Flask(__name__)
+# Request Logging und Performance Tracking Middleware
+request_start_times = {}
 
-    return render_template('index.html', categories=categories)
+@app.before_request
+def log_request_info():
+    request_start_times[request.path] = time.time()
+    logger.info("HTTP Request received",
+               method=request.method,
+               path=request.path,
+               remote_addr=request.remote_addr,
+               user_agent=request.headers.get('User-Agent'))
+
+@app.after_request
+def log_response_info(response):
+    # Performance Tracking
+    if request.path in request_start_times:
+        duration = time.time() - request_start_times[request.path]
+        performance_tracker.record_response_time(request.path, duration)
+        performance_tracker.record_error_rate(request.path, response.status_code >= 400)
+        del request_start_times[request.path]
+
+    logger.info("HTTP Response sent",
+               status_code=response.status_code,
+               path=request.path,
+               duration=duration if 'duration' in locals() else None)
+    return response
 
 # API: Unterverzeichnisse zu Kategorie vorschlagen
+@app.route('/api/suggest-subdirs', methods=['POST'])
+def suggest_subdirs():
+    data = request.get_json()
+    category = data.get('category', '')
+    if not category:
+        return jsonify({'error': 'Keine Kategorie angegeben'}), 400
 
-@app.route('/api/scan-files')@app.route('/api/suggest-subdirs', methods=['POST'])
+    # Suche Unterverzeichnisse in der Kategorie
+    base_path = os.path.join(CONFIG['SORTED_DIR'], category)
+    subdirs = []
+    if os.path.exists(base_path):
+        for item in os.listdir(base_path):
+            item_path = os.path.join(base_path, item)
+            if os.path.isdir(item_path) and item not in CONFIG['BLACKLIST_DIRS']:
+                subdirs.append(item)
 
-def scan_files():def suggest_subdirs():
+    return jsonify({'subdirs': subdirs})
 
-    """Scannt das Eingangverzeichnis nach PDFs"""    data = request.get_json()
-
-    files = file_service.scan_directory()    category = data.get('category', '')
-
-        if not category:
-
-    return jsonify({        return jsonify({'error': 'Keine Kategorie angegeben'}), 400
-
-        'files': files,
-
-        'system_stats': {    # Suche Unterverzeichnisse in der Kategorie
-
-            'cpu_percent': 0,    base_path = os.path.join(CONFIG['SORTED_DIR'], category)
-
-            'memory_percent': 0,    subdirs = []
-
-            'disk_usage': 0    if os.path.exists(base_path):
-
-        },        for item in os.listdir(base_path):
-
-        'preload_status': {            item_path = os.path.join(base_path, item)
-
-            'is_running': False,            if os.path.isdir(item_path) and item not in CONFIG['BLACKLIST_DIRS']:
-
-            'processed_documents': 0,                subdirs.append(item)
-
-            'total_documents': 0,
-
-            'current_document': ''    return jsonify({'subdirs': subdirs})
-
-        },
-
-        'cached_count': len(files)# Konfiguration
-
-    })CONFIG = {
-
+# Konfiguration
+CONFIG = {
     'LM_STUDIO_URL': LM_STUDIO_URL,
-
-@app.route('/api/random-document')    'SCAN_DIR': SCAN_DIR,
-
-def get_random_document():    'SORTED_DIR': SORTED_DIR,
-
-    """Wählt ein zufälliges PDF aus dem Scan-Verzeichnis"""    'BLACKLIST_DIRS': [
-
-    doc = file_service.get_random_document()        '.SynologyWorkingDirectory',
-
-    if not doc:        '#SynoRecycle',
-
-        return jsonify({'error': 'No PDF files found'}), 404        'diss',
-
-    return jsonify(doc)        'geschenke für andere',
-
+    'SCAN_DIR': SCAN_DIR,
+    'SORTED_DIR': SORTED_DIR,
+    'BLACKLIST_DIRS': [
+        '.SynologyWorkingDirectory',
+        '#SynoRecycle',
+        'diss',
+        'geschenke für andere',
         '21_gifs',
+        '.DS_Store',
+        '__pycache__',
+        '.git',
+        'node_modules'
+    ]
+}
 
-@app.route('/api/process-document', methods=['POST'])        '.DS_Store',
+def pdf_to_preview_image(pdf_path):
+    """Konvertiert erste Seite eines PDFs zu Base64-String für Preview"""
+    try:
+        doc = fitz.open(pdf_path)
+        page = doc[0]
 
-def process_document():        '__pycache__',
+        # Render als PNG mit 150 DPI
+        mat = fitz.Matrix(1.5, 1.5)
+        pix = page.get_pixmap(matrix=mat)
+        img_data = pix.tobytes("png")
 
-    """Verarbeitet ein PDF: Preview + KI-Klassifizierung"""        '.git',
+        # Base64 encoding für HTML-Anzeige
+        img_b64 = base64.b64encode(img_data).decode()
+        doc.close()
 
-    data = request.get_json()        'node_modules'
+        return f"data:image/png;base64,{img_b64}"
+    except Exception as e:
+        print(f"Error creating preview: {e}")
+        return None
 
-    pdf_path = data.get('path')    ]
-
-    }
-
-    if not pdf_path or not os.path.exists(pdf_path):
-
-        return jsonify({'error': 'PDF file not found'}), 404def pdf_to_preview_image(pdf_path):
-
-            """Konvertiert erste Seite eines PDFs zu Base64-String für Preview"""
-
-    # Preview-Image generieren    try:
-
-    preview = pdf_service.create_preview(pdf_path)        doc = fitz.open(pdf_path)
-
-            page = doc[0]
-
-    # Text extrahieren
-
-    text = pdf_service.extract_text(pdf_path)        # Render als PNG mit 150 DPI
-
-            mat = fitz.Matrix(1.5, 1.5)
-
-    # KI-Klassifizierung        pix = page.get_pixmap(matrix=mat)
-
-    categories = file_service.get_smart_categories()        img_data = pix.tobytes("png")
-
-    suggested_category = llm_service.classify_document(text, categories)
-
-            # Base64 encoding für HTML-Anzeige
-
-    # Vorgeschlagenen Pfad generieren        img_b64 = base64.b64encode(img_data).decode()
-
-    filename = os.path.basename(pdf_path)        doc.close()
-
-    suggested_path = os.path.join(
-
-        config.get('SORTED_DIR'),        return f"data:image/png;base64,{img_b64}"
-
-        suggested_category,    except Exception as e:
-
-        filename        print(f"Error creating preview: {e}")
-
-    )        return None
-
-    
-
-    return jsonify({def extract_text_from_pdf(pdf_path):
-
-        'preview': preview,    """Extrahiert Text aus PDF für KI-Analyse"""
-
-        'suggested_category': suggested_category,    try:
-
-        'suggested_path': suggested_path,        doc = fitz.open(pdf_path)
-
-        'original_path': pdf_path        text = ""
-
-    })
+def extract_text_from_pdf(pdf_path):
+    """Extrahiert Text aus PDF für KI-Analyse"""
+    try:
+        doc = fitz.open(pdf_path)
+        text = ""
 
         # Maximal erste 3 Seiten für Performance
+        for page_num in range(min(3, len(doc))):
+            page = doc[page_num]
+            text += page.get_text()
 
-@app.route('/api/move-document', methods=['POST'])        for page_num in range(min(3, len(doc))):
+        doc.close()
+        return text.strip()
+    except Exception as e:
+        print(f"Error extracting text: {e}")
+        return ""
 
-def move_document():            page = doc[page_num]
+def get_smart_categories():
+    """Generiert intelligente Kategorien basierend auf Documents-Struktur"""
+    sorted_dir = Path(CONFIG['SORTED_DIR'])
+    categories = []
 
-    """Führt den Move-Befehl aus"""            text += page.get_text()
+    if sorted_dir.exists():
+        for item in sorted_dir.iterdir():
+            if item.is_dir() and item.name not in CONFIG['BLACKLIST_DIRS']:
+                categories.append(item.name)
 
-    data = request.get_json()
-
-    source_path = data.get('source_path')        doc.close()
-
-    target_path = data.get('target_path')        return text.strip()
-
-        except Exception as e:
-
-    if not source_path or not target_path:        print(f"Error extracting text: {e}")
-
-        return jsonify({'error': 'Missing paths'}), 400        return ""
-
-        
-
-    if not os.path.exists(source_path):def get_smart_categories():
-
-        return jsonify({'error': 'Source file not found'}), 404    """Generiert intelligente Kategorien basierend auf Documents-Struktur"""
-
-            sorted_dir = Path(CONFIG['SORTED_DIR'])
-
-    success = file_service.move_document(source_path, target_path)    categories = []
-
-    
-
-    if success:    if sorted_dir.exists():
-
-        return jsonify({        for item in sorted_dir.iterdir():
-
-            'success': True,            if item.is_dir() and item.name not in CONFIG['BLACKLIST_DIRS']:
-
-            'message': f'File moved to {target_path}'                categories.append(item.name)
-
-        })
-
-    else:    # Fallback-Kategorien falls Documents leer ist
-
-        return jsonify({    if not categories:
-
-            'error': 'Move operation failed'        categories = ['Steuern', 'Versicherungen', 'Verträge', 'Banken', 'Medizin', 'Behörden', 'Sonstiges']
-
-        }), 500
+    # Fallback-Kategorien falls Documents leer ist
+    if not categories:
+        categories = ['Steuern', 'Versicherungen', 'Verträge', 'Banken', 'Medizin', 'Behörden', 'Sonstiges']
 
     return sorted(categories)
 
-@app.route('/api/system-status')
+def get_directory_tree(base_path, max_depth=3, current_depth=0):
+    """Erstellt Verzeichnisbaum mit Blacklist-Filter"""
+    if current_depth >= max_depth:
+        return {}
 
-def system_status():def get_directory_tree(base_path, max_depth=3, current_depth=0):
+    tree = {}
+    base = Path(base_path)
 
-    """Systemstatus für Frontend"""    """Erstellt Verzeichnisbaum mit Blacklist-Filter"""
+    if not base.exists():
+        return tree
 
-    scan_dir = config.get_path('SCAN_DIR')    if current_depth >= max_depth:
-
-    sorted_dir = config.get_path('SORTED_DIR')        return {}
-
-    
-
-    return jsonify({    tree = {}
-
-        'scan_dir_exists': scan_dir.exists(),    base = Path(base_path)
-
-        'sorted_dir_exists': sorted_dir.exists(),
-
-        'lm_studio_url': config.get('LM_STUDIO_URL'),    if not base.exists():
-
-        'preload_status': {'is_running': False},        return tree
-
-        'preload_complete': True,
-
-        'system_stats': {    for item in base.iterdir():
-
-            'cpu_percent': 0,        if item.is_dir() and item.name not in CONFIG['BLACKLIST_DIRS']:
-
-            'memory_percent': 0,            subtree = get_directory_tree(item, max_depth, current_depth + 1)
-
-            'disk_usage': 0            tree[item.name] = {
-
-        }                'path': str(item),
-
-    })                'children': subtree,
-
+    for item in base.iterdir():
+        if item.is_dir() and item.name not in CONFIG['BLACKLIST_DIRS']:
+            subtree = get_directory_tree(item, max_depth, current_depth + 1)
+            tree[item.name] = {
+                'path': str(item),
+                'children': subtree,
                 'has_children': bool(subtree)
+            }
 
-@app.route('/api/directory-structure')            }
+    return tree
 
-def directory_structure():
+def classify_document(text):
+    """Fragt DeepSeek R3 über LM Studio nach Dokumentenklassifizierung"""
+    categories = get_smart_categories()
 
-    """Verzeichnisstruktur für Frontend mit Blacklist-Filter"""    return tree
+    prompt = f"""Du bist ein Experte für Dokumentenklassifizierung.
+Analysiere den folgenden Text und wähle die passendste Kategorie:
 
-    tree = file_service.get_directory_tree(
+Verfügbare Kategorien: {', '.join(categories)}
 
-        config.get_path('SORTED_DIR')def classify_document(text):
+Dokumententext:
+{text[:2000]}
 
-    )    """Fragt DeepSeek R3 über LM Studio nach Dokumentenklassifizierung"""
+Antworte nur mit der Kategorie, nichts anderes. Falls unsicher, wähle 'Sonstiges'."""
 
-    return jsonify(tree)    categories = get_smart_categories()
+    try:
+        response = requests.post(
+            CONFIG['LM_STUDIO_URL'],
+            json={
+                "model": "deepseek-r1",
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.1,
+                "max_tokens": 50
+            },
+            timeout=30
+        )
 
-
-
-@app.route('/api/suggest-alternative-paths', methods=['POST'])    prompt = f"""Du bist ein Experte für Dokumentenklassifizierung.
-
-def suggest_alternative_paths():Analysiere den folgenden Text und wähle die passendste Kategorie:
-
-    """Schlägt alternative Zielpfade vor"""
-
-    data = request.get_json()Verfügbare Kategorien: {', '.join(categories)}
-
-    filename = data.get('filename', '')
-
-    Dokumententext:
-
-    if not filename:{text[:2000]}
-
-        return jsonify({'error': 'No filename provided'}), 400
-
-        Antworte nur mit der Kategorie, nichts anderes. Falls unsicher, wähle 'Sonstiges'."""
-
-    # Intelligente Pfadvorschläge basierend auf existierenden Verzeichnissen
-
-    suggestions = []    try:
-
-    categories = file_service.get_smart_categories()        response = requests.post(
-
-                CONFIG['LM_STUDIO_URL'],
-
-    for category in categories[:5]:  # Nur Top 5 für bessere UX            json={
-
-        category_path = os.path.join(                "model": "deepseek-r1",
-
-            config.get('SORTED_DIR'),                "messages": [
-
-            category,                    {"role": "user", "content": prompt}
-
-            filename                ],
-
-        )                "temperature": 0.1,
-
-        suggestions.append({                "max_tokens": 50
-
-            'path': category_path,            },
-
-            'category': category,            timeout=30
-
-            'confidence': 0.7 if category != 'Sonstiges' else 0.3        )
-
-        })
-
-                if response.status_code == 200:
-
-    return jsonify({'suggestions': suggestions})            result = response.json()
-
+        if response.status_code == 200:
+            result = response.json()
             category = result['choices'][0]['message']['content'].strip()
 
-if __name__ == '__main__':
+            if category in categories:
+                return category
+            else:
+                return 'Sonstiges'
+        else:
+            print(f"LM Studio Error: {response.status_code}")
+            return 'Sonstiges'
 
-    # Verzeichnisse erstellen falls nicht vorhanden            if category in categories:
+    except Exception as e:
+        print(f"Error calling LM Studio: {e}")
+        return 'Sonstiges'
 
-    config.ensure_directories()                return category
-
-                else:
-
-    print("Starting Document Sorter...")                return 'Sonstiges'
-
-    print(f"Scan directory: {config.get('SCAN_DIR')}")        else:
-
-    print(f"Sorted directory: {config.get('SORTED_DIR')}")            print(f"LM Studio Error: {response.status_code}")
-
-    print(f"LM Studio URL: {config.get('LM_STUDIO_URL')}")            return 'Sonstiges'
-
-    
-
-    app.run(    except Exception as e:
-
-        debug=config.get('DEBUG_MODE'),        print(f"Error calling LM Studio: {e}")
-
-        host=config.get('HOST'),        return 'Sonstiges'
-
-        port=config.get('PORT')
-
-    )@app.route('/')
+@app.route('/')
 def index():
     """Hauptseite der Webapp"""
     categories = get_smart_categories()
@@ -425,48 +284,81 @@ def get_random_document():
     })
 
 @app.route('/api/process-document', methods=['POST'])
+@log_performance("process_document")
 def process_document():
     """Verarbeitet ein PDF: Preview + KI-Klassifizierung"""
-    data = request.get_json()
-    pdf_path = data.get('path')
+    try:
+        data = request.get_json()
+        pdf_path = data.get('path')
 
-    if not pdf_path or not os.path.exists(pdf_path):
-        return jsonify({'error': 'PDF file not found'}), 404
+        if not pdf_path or not os.path.exists(pdf_path):
+            logger.warning("PDF processing failed: file not found",
+                         pdf_path=pdf_path)
+            return jsonify({'error': 'PDF file not found'}), 404
 
-    # Preview-Image generieren
-    preview = pdf_to_preview_image(pdf_path)
+        logger.info("Processing PDF document",
+                   pdf_path=pdf_path,
+                   filename=os.path.basename(pdf_path))
 
-    # Text extrahieren
-    text = extract_text_from_pdf(pdf_path)
+        # Preview-Image generieren
+        preview = pdf_to_preview_image(pdf_path)
 
-    # KI-Klassifizierung
-    suggested_category = classify_document(text)
+        # Text extrahieren
+        text = extract_text_from_pdf(pdf_path)
 
-    # Vorgeschlagenen Pfad generieren
-    filename = os.path.basename(pdf_path)
-    suggested_path = os.path.join(CONFIG['SORTED_DIR'], suggested_category, filename)
+        # KI-Klassifizierung
+        suggested_category = classify_document(text)
 
-    return jsonify({
-        'preview': preview,
-        'suggested_category': suggested_category,
-        'suggested_path': suggested_path,
-        'original_path': pdf_path
-    })
+        # Vorgeschlagenen Pfad generieren
+        filename = os.path.basename(pdf_path)
+        suggested_path = os.path.join(CONFIG['SORTED_DIR'], suggested_category, filename)
+
+        logger.info("PDF processing completed successfully",
+                   pdf_path=pdf_path,
+                   suggested_category=suggested_category,
+                   text_length=len(text))
+
+        return jsonify({
+            'preview': preview,
+            'suggested_category': suggested_category,
+            'suggested_path': suggested_path,
+            'original_path': pdf_path
+        })
+
+    except Exception as e:
+        logger.error("PDF processing failed with exception",
+                    pdf_path=pdf_path,
+                    exception=e)
+        error_reporter.report_error("pdf_processing_error", str(e), {
+            'pdf_path': pdf_path,
+            'operation': 'process_document'
+        })
+        return jsonify({'error': 'PDF processing failed'}), 500
 
 @app.route('/api/move-document', methods=['POST'])
+@log_performance("move_document")
 def move_document():
     """Führt den Move-Befehl aus"""
-    data = request.get_json()
-    source_path = data.get('source_path')
-    target_path = data.get('target_path')
-
-    if not source_path or not target_path:
-        return jsonify({'error': 'Missing paths'}), 400
-
-    if not os.path.exists(source_path):
-        return jsonify({'error': 'Source file not found'}), 404
-
     try:
+        data = request.get_json()
+        source_path = data.get('source_path')
+        target_path = data.get('target_path')
+
+        if not source_path or not target_path:
+            logger.warning("Document move failed: missing paths",
+                         source_path=source_path,
+                         target_path=target_path)
+            return jsonify({'error': 'Missing paths'}), 400
+
+        if not os.path.exists(source_path):
+            logger.warning("Document move failed: source not found",
+                         source_path=source_path)
+            return jsonify({'error': 'Source file not found'}), 404
+
+        logger.info("Moving document",
+                   source_path=source_path,
+                   target_path=target_path)
+
         # Zielverzeichnis erstellen falls nicht vorhanden
         target_dir = os.path.dirname(target_path)
         os.makedirs(target_dir, exist_ok=True)
@@ -474,9 +366,22 @@ def move_document():
         # Datei verschieben
         shutil.move(source_path, target_path)
 
+        logger.info("Document moved successfully",
+                   source_path=source_path,
+                   target_path=target_path)
+
         return jsonify({'success': True, 'message': f'File moved to {target_path}'})
 
     except Exception as e:
+        logger.error("Document move failed with exception",
+                    source_path=source_path,
+                    target_path=target_path,
+                    exception=e)
+        error_reporter.report_error("document_move_error", str(e), {
+            'source_path': source_path,
+            'target_path': target_path,
+            'operation': 'move_document'
+        })
         return jsonify({'error': f'Move failed: {str(e)}'}), 500
 
 @app.route('/api/system-status')
@@ -594,15 +499,306 @@ def suggest_similar_paths():
         'combinations': combinations
     })
 
+# Monitoring Endpoints
+@app.route('/api/monitoring/logs')
+def get_logs():
+    """Gibt aggregierte Log-Daten zurück"""
+    try:
+        hours = request.args.get('hours', 24, type=int)
+        # Note: In production würde dies async laufen
+        # Für jetzt simulieren wir die Aggregation
+
+        stats = {
+            'time_range_hours': hours,
+            'summary': {
+                'total_entries': 150,
+                'by_level': {'INFO': 100, 'WARNING': 30, 'ERROR': 15, 'DEBUG': 5},
+                'by_logger': {'document_sorter': 80, 'performance': 40, 'security': 30}
+            },
+            'recent_errors': error_reporter.get_error_statistics()
+        }
+
+        logger.info("Log data requested", hours=hours)
+        return jsonify(stats)
+    except Exception as e:
+        logger.error("Failed to get logs", exception=e)
+        return jsonify({'error': 'Failed to retrieve logs'}), 500
+
+@app.route('/api/monitoring/errors')
+def get_error_stats():
+    """Gibt Error-Statistiken zurück"""
+    try:
+        stats = error_reporter.get_error_statistics()
+        return jsonify(stats)
+    except Exception as e:
+        logger.error("Failed to get error statistics", exception=e)
+        return jsonify({'error': 'Failed to retrieve error statistics'}), 500
+
+@app.route('/api/monitoring/logs/search')
+def search_logs():
+    """Durchsucht Logs nach Pattern"""
+    try:
+        pattern = request.args.get('pattern', '')
+        hours = request.args.get('hours', 24, type=int)
+        log_level = request.args.get('level')
+
+        if not pattern:
+            return jsonify({'error': 'Search pattern required'}), 400
+
+        # Note: In production würde dies async laufen
+        results = []  # Placeholder - echte Suche würde log_aggregator.search_logs verwenden
+
+        logger.info("Log search performed", pattern=pattern, hours=hours, level=log_level)
+        return jsonify({'results': results, 'pattern': pattern})
+    except Exception as e:
+        logger.error("Log search failed", exception=e)
+        return jsonify({'error': 'Log search failed'}), 500
+
+@app.route('/api/monitoring/logs/export', methods=['POST'])
+def export_error_report():
+    """Exportiert Error-Report"""
+    try:
+        data = request.get_json() or {}
+        hours = data.get('hours', 24)
+        filepath = f"logs/error_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+
+        success = error_reporter.export_error_report(filepath, hours)
+
+        if success:
+            logger.info("Error report exported", filepath=filepath, hours=hours)
+            return jsonify({'success': True, 'filepath': filepath})
+        else:
+            return jsonify({'error': 'Export failed'}), 500
+    except Exception as e:
+        logger.error("Error report export failed", exception=e)
+        return jsonify({'error': 'Export failed'}), 500
+
+@app.route('/api/monitoring/logs/cleanup', methods=['POST'])
+def cleanup_logs():
+    """Führt Log-Cleanup durch"""
+    try:
+        data = request.get_json() or {}
+        days = data.get('days', 7)
+
+        # Komprimiere alte Logs
+        compressed_count = log_aggregator.compress_old_logs()
+
+        # Entferne sehr alte Logs
+        removed_count, freed_space = log_aggregator.cleanup_old_logs()
+
+        # Cleanup alte Errors
+        cleaned_errors = error_reporter.cleanup_old_errors(days)
+
+        result = {
+            'compressed_logs': compressed_count,
+            'removed_logs': removed_count,
+            'freed_space_mb': round(freed_space / (1024 * 1024), 2),
+            'cleaned_errors': cleaned_errors
+        }
+
+        logger.info("Log cleanup completed", **result)
+        return jsonify(result)
+    except Exception as e:
+        logger.error("Log cleanup failed", exception=e)
+        return jsonify({'error': 'Cleanup failed'}), 500
+
+@app.route('/api/monitoring/status')
+def monitoring_status():
+    """Gibt Monitoring-System Status zurück"""
+    try:
+        log_stats = log_aggregator.get_log_statistics()
+        error_stats = error_reporter.get_error_statistics()
+
+        status = {
+            'logging': {
+                'enabled': True,
+                'log_files': log_stats['file_count'],
+                'total_size_mb': log_stats['total_size_mb']
+            },
+            'error_reporting': {
+                'enabled': True,
+                'total_error_types': len(error_stats['error_types']),
+                'total_errors': sum(error_stats['total_errors'].values())
+            },
+            'log_aggregation': {
+                'enabled': True,
+                'retention_days': log_aggregator.retention_days
+            }
+        }
+
+        return jsonify(status)
+    except Exception as e:
+        logger.error("Failed to get monitoring status", exception=e)
+        return jsonify({'error': 'Failed to retrieve status'}), 500
+
+# Performance Monitoring Endpoints
+@app.route('/api/performance/current')
+def get_current_performance():
+    """Gibt aktuelle Performance-Metriken zurück"""
+    try:
+        metrics = performance_tracker.get_current_metrics()
+        logger.info("Current performance metrics requested")
+        return jsonify(metrics)
+    except Exception as e:
+        logger.error("Failed to get current performance metrics", exception=e)
+        return jsonify({'error': 'Failed to retrieve performance metrics'}), 500
+
+@app.route('/api/performance/historical')
+def get_historical_performance():
+    """Gibt historische Performance-Metriken zurück"""
+    try:
+        hours = request.args.get('hours', 24, type=int)
+        metrics = performance_tracker.get_historical_metrics(hours)
+        logger.info("Historical performance metrics requested", hours=hours)
+        return jsonify(metrics)
+    except Exception as e:
+        logger.error("Failed to get historical performance metrics", exception=e)
+        return jsonify({'error': 'Failed to retrieve historical metrics'}), 500
+
+@app.route('/api/performance/summary')
+def get_performance_summary():
+    """Gibt Performance-Zusammenfassung zurück"""
+    try:
+        hours = request.args.get('hours', 24, type=int)
+        summary = performance_tracker.get_performance_summary(hours)
+        logger.info("Performance summary requested", hours=hours)
+        return jsonify(summary)
+    except Exception as e:
+        logger.error("Failed to get performance summary", exception=e)
+        return jsonify({'error': 'Failed to retrieve performance summary'}), 500
+
+@app.route('/api/performance/alerts')
+def get_performance_alerts():
+    """Gibt Performance-Alerts zurück"""
+    try:
+        hours = request.args.get('hours', 24, type=int)
+        summary = performance_tracker.get_performance_summary(hours)
+        alerts = summary.get('alerts', [])
+
+        logger.info("Performance alerts requested", hours=hours, alert_count=len(alerts))
+        return jsonify({'alerts': alerts, 'count': len(alerts)})
+    except Exception as e:
+        logger.error("Failed to get performance alerts", exception=e)
+        return jsonify({'error': 'Failed to retrieve performance alerts'}), 500
+
+@app.route('/api/performance/export', methods=['POST'])
+def export_performance_metrics():
+    """Exportiert Performance-Metriken"""
+    try:
+        data = request.get_json() or {}
+        hours = data.get('hours', 24)
+        filepath = f"logs/performance_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+
+        success = performance_tracker.export_metrics(filepath, hours)
+
+        if success:
+            logger.info("Performance metrics exported", filepath=filepath, hours=hours)
+            return jsonify({'success': True, 'filepath': filepath})
+        else:
+            return jsonify({'error': 'Export failed'}), 500
+    except Exception as e:
+        logger.error("Performance metrics export failed", exception=e)
+        return jsonify({'error': 'Export failed'}), 500
+
+@app.route('/api/performance/custom-metric', methods=['POST'])
+def record_custom_metric():
+    """Zeichnet benutzerdefinierte Metrik auf"""
+    try:
+        data = request.get_json()
+        if not data or 'name' not in data or 'value' not in data:
+            return jsonify({'error': 'Missing name or value'}), 400
+
+        name = data['name']
+        value = data['value']
+        tags = data.get('tags', {})
+
+        performance_tracker.record_custom_metric(name, value, tags)
+
+        logger.info("Custom metric recorded", name=name, value=value, tags=tags)
+        return jsonify({'success': True, 'message': f'Metric {name} recorded'})
+    except Exception as e:
+        logger.error("Failed to record custom metric", exception=e)
+        return jsonify({'error': 'Failed to record metric'}), 500
+
+# Dashboard Endpoint
+@app.route('/api/dashboard/overview')
+def dashboard_overview():
+    """Gibt Dashboard-Übersicht zurück"""
+    try:
+        # Sammle verschiedene Metriken für Dashboard
+        current_perf = performance_tracker.get_current_metrics()
+        error_stats = error_reporter.get_error_statistics()
+        log_stats = log_aggregator.get_log_statistics()
+        perf_summary = performance_tracker.get_performance_summary(24)
+
+        overview = {
+            'timestamp': time.time(),
+            'system_health': {
+                'cpu_percent': current_perf['system'].get('cpu_percent', 0),
+                'memory_percent': current_perf['system'].get('memory_percent', 0),
+                'disk_usage': current_perf['system'].get('disk_usage', 0),
+                'status': perf_summary['system_health']['overall_status']
+            },
+            'application_stats': {
+                'total_requests': sum(current_perf.get('request_counts', {}).values()),
+                'average_response_time': _calculate_overall_avg_response_time(current_perf),
+                'error_count': sum(error_stats.get('total_errors', {}).values()),
+                'monitoring_active': current_perf.get('monitoring_active', False)
+            },
+            'log_stats': {
+                'total_log_files': log_stats.get('file_count', 0),
+                'total_size_mb': log_stats.get('total_size_mb', 0)
+            },
+            'alerts': perf_summary.get('alerts', [])[:5]  # Top 5 alerts
+        }
+
+        logger.info("Dashboard overview requested")
+        return jsonify(overview)
+    except Exception as e:
+        logger.error("Failed to get dashboard overview", exception=e)
+        return jsonify({'error': 'Failed to retrieve dashboard overview'}), 500
+
+def _calculate_overall_avg_response_time(current_perf):
+    """Berechnet durchschnittliche Response Time über alle Endpoints"""
+    response_times = current_perf.get('response_times', {})
+    if not response_times:
+        return 0
+
+    total_time = 0
+    total_requests = 0
+
+    for endpoint, stats in response_times.items():
+        total_time += stats['avg'] * stats['count']
+        total_requests += stats['count']
+
+    return total_time / total_requests if total_requests > 0 else 0
+
 if __name__ == '__main__':
     # Überprüfe ob Verzeichnisse existieren
     for dir_path in [CONFIG['SCAN_DIR'], CONFIG['SORTED_DIR']]:
         if not os.path.exists(dir_path):
+            logger.warning(f"Directory does not exist: {dir_path}")
             print(f"Warning: Directory {dir_path} does not exist")
 
-    print("Starting Document Sorter...")
-    print(f"Scan directory: {CONFIG['SCAN_DIR']}")
-    print(f"Sorted directory: {CONFIG['SORTED_DIR']}")
-    print(f"LM Studio URL: {CONFIG['LM_STUDIO_URL']}")
+    # Initialisierung loggen
+    logger.info("Starting Document Sorter application",
+               scan_dir=CONFIG['SCAN_DIR'],
+               sorted_dir=CONFIG['SORTED_DIR'],
+               lm_studio_url=CONFIG['LM_STUDIO_URL'],
+               debug_mode=DEBUG_MODE)
 
-    app.run(debug=DEBUG_MODE, host=HOST, port=PORT)
+    print("Starting Document Sorter with comprehensive logging...")
+    print(f"📁 Scan directory: {CONFIG['SCAN_DIR']}")
+    print(f"📂 Sorted directory: {CONFIG['SORTED_DIR']}")
+    print(f"🤖 LM Studio URL: {CONFIG['LM_STUDIO_URL']}")
+    print(f"📊 Monitoring: /api/monitoring/status")
+    print(f"📝 Logs: /api/monitoring/logs")
+
+    try:
+        app.run(debug=DEBUG_MODE, host=HOST, port=PORT)
+    except Exception as e:
+        logger.critical("Application startup failed", exception=e)
+        error_reporter.report_error("application_startup_error", str(e), {
+            'config': CONFIG
+        })
+        raise
