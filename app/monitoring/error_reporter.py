@@ -5,8 +5,8 @@ import json
 import smtplib
 import time
 from typing import Dict, List, Optional, Any
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from collections import defaultdict, deque
 from threading import Lock
 from pathlib import Path
@@ -153,11 +153,11 @@ Please investigate this issue promptly.
             raise ValueError("Incomplete SMTP configuration")
 
         # Email erstellen
-        msg = MimeMultipart()
+        msg = MIMEMultipart()
         msg['From'] = from_email
         msg['To'] = ', '.join(self.notification_emails)
         msg['Subject'] = subject
-        msg.attach(MimeText(body, 'plain'))
+        msg.attach(MIMEText(body, 'plain'))
 
         # Email senden
         with smtplib.SMTP(smtp_host, smtp_port) as server:

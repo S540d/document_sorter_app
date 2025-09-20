@@ -92,13 +92,13 @@ CONFIG = {
     'BLACKLIST_DIRS': [
         '.SynologyWorkingDirectory',
         '#SynoRecycle',
-        'diss',
-        'geschenke für andere',
         '21_gifs',
         '.DS_Store',
         '__pycache__',
         '.git',
-        'node_modules'
+        'node_modules',
+        '.localized',
+        'Programmierung'
     ]
 }
 
@@ -177,49 +177,202 @@ def get_directory_tree(base_path, max_depth=3, current_depth=0):
 
     return tree
 
-def classify_document(text):
-    """Fragt DeepSeek R3 über LM Studio nach Dokumentenklassifizierung"""
+def get_live_directory_structure():
+    """Hole die echte Verzeichnisstruktur zur Laufzeit (lokal für KI)"""
+    try:
+        sorted_dir = Path(CONFIG['SORTED_DIR'])
+        if not sorted_dir.exists():
+            return {}
+        return get_directory_tree(sorted_dir)
+    except Exception as e:
+        logger.error("Failed to get live directory structure", exception=e)
+        return {}
+
+def build_category_context_for_ai():
+    """Erstelle strukturierte Kategorieinformationen basierend auf echter Verzeichnisstruktur"""
+    # Hole echte Verzeichnisstruktur zur Laufzeit
+    directory_structure = get_live_directory_structure()
+
+    if not directory_structure:
+        # Fallback: Verwende verfügbare Kategorien
+        categories = get_smart_categories()
+        return "Verfügbare Kategorien: " + ", ".join(categories)
+
+    category_lines = []
+    for category, info in directory_structure.items():
+        if not info.get('has_children', False):
+            category_lines.append(f"📁 {category}")
+        else:
+            category_lines.append(f"📁 {category}")
+            # Zeige die ersten 5 Unterverzeichnisse
+            children = list(info.get('children', {}).keys())[:5]
+            for child in children:
+                category_lines.append(f"   └── {child}")
+            if len(info.get('children', {})) > 5:
+                category_lines.append(f"   └── ... ({len(info.get('children', {})) - 5} weitere)")
+
+    return "\n".join(category_lines)
+
+def extract_document_context(text, filename):
+    """Extrahiere Kontext-Hinweise aus Dokumententext und Dateiname"""
+    hints = []
+
+    # Dateiname-Analyse
+    if filename:
+        filename_lower = filename.lower()
+        if any(word in filename_lower for word in ['rechnung', 'invoice', 'bill']):
+            hints.append("Rechnung")
+        if any(word in filename_lower for word in ['vertrag', 'contract']):
+            hints.append("Vertrag")
+        if any(word in filename_lower for word in ['kita', 'kindergarten']):
+            hints.append("Kita/Kindergarten")
+        if any(word in filename_lower for word in ['arbeit', 'job', 'gehalt']):
+            hints.append("Arbeit")
+        if any(word in filename_lower for word in ['steuer', 'tax']):
+            hints.append("Steuern")
+
+    # Text-Analyse (erste 500 Zeichen für Performance)
+    text_sample = text[:500].lower() if text else ""
+    if any(word in text_sample for word in ['rechnung', 'betrag', 'euro', 'umsatzsteuer']):
+        hints.append("Finanzdokument")
+    if any(word in text_sample for word in ['arbeitsvertrag', 'gehalt', 'lohn', 'arbeitgeber']):
+        hints.append("Arbeitsdokument")
+    if any(word in text_sample for word in ['mietvertrag', 'miete', 'wohnung', 'hausverwaltung']):
+        hints.append("Wohndokument")
+    if any(word in text_sample for word in ['fahrzeug', 'auto', 'kfz', 'tüv', 'versicherung']):
+        hints.append("Fahrzeug")
+    if any(word in text_sample for word in ['kindergarten', 'kita', 'betreuung']):
+        hints.append("Kita")
+
+    return ", ".join(hints) if hints else "Keine spezifischen Hinweise"
+
+def parse_ai_response(raw_response, available_categories):
+    """Parse AI response and extract the category name, handling DeepSeek reasoning tokens"""
+
+    # First try exact match with available categories
+    for category in available_categories:
+        if category in raw_response:
+            return category
+
+    # Handle DeepSeek reasoning tokens - extract content after </think>
+    if '</think>' in raw_response:
+        parts = raw_response.split('</think>')
+        if len(parts) > 1:
+            final_answer = parts[-1].strip()
+            # Check if final answer contains any category
+            for category in available_categories:
+                if category in final_answer:
+                    return category
+            # If no category found, return the cleaned final answer
+            return final_answer
+
+    # Handle other reasoning patterns
+    lines = raw_response.split('\n')
+    for line in lines:
+        line = line.strip()
+        if line and not line.startswith('<') and not line.startswith('Okay') and not line.startswith('Ich'):
+            for category in available_categories:
+                if category in line:
+                    return category
+            # If this line looks like a clean category answer, return it
+            if len(line) < 50 and not line.endswith('?'):
+                return line
+
+    # Fallback: return the cleaned raw response
+    cleaned = raw_response.replace('<think>', '').replace('</think>', '').strip()
+    lines = cleaned.split('\n')
+    if lines:
+        return lines[-1].strip()
+
+    return raw_response.strip()
+
+def classify_document(text, filename=None):
+    """Fragt DeepSeek R3 über LM Studio nach Dokumentenklassifizierung mit Live-Verzeichnisstruktur"""
+
+    # Hole verfügbare Kategorien
     categories = get_smart_categories()
 
-    prompt = f"""Du bist ein Experte für Dokumentenklassifizierung.
-Analysiere den folgenden Text und wähle die passendste Kategorie:
+    # Erstelle Kategorieinformationen basierend auf echter Struktur (zur Laufzeit)
+    category_info = build_category_context_for_ai()
 
-Verfügbare Kategorien: {', '.join(categories)}
+    # Extrahiere zusätzliche Kontext-Hinweise
+    context_hints = extract_document_context(text, filename)
 
-Dokumententext:
+    prompt = f"""Du bist ein Experte für deutsche Dokumentenklassifizierung.
+Analysiere das Dokument und wähle die beste Kategorie basierend auf Inhalt, Dateiname und verfügbaren Verzeichnissen.
+
+DOKUMENT-KONTEXT:
+- Dateiname: {filename or 'Unbekannt'}
+- Textlänge: {len(text)} Zeichen
+- Erkannte Hinweise: {context_hints}
+
+VERFÜGBARE KATEGORIEN MIT STRUKTUR:
+{category_info}
+
+KLASSIFIZIERUNGS-REGELN:
+1. Wähle die spezifischste passende Kategorie aus der obigen Liste
+2. Bei Kita/Kindergarten-Dokumenten → entsprechende Wohn- oder Schriftverkehr-Kategorie
+3. Bei Arbeitsdokumenten → Arbeitskategorie
+4. Bei Finanzen/Steuern/Versicherungen → Finanzkategorie
+5. Bei Fahrzeugen → Fahrzeugkategorie
+6. Bei Wissenschaft/Studium → Bildungskategorie
+7. Bei Wohnen/Miete → Wohnkategorie
+
+DOKUMENTENTEXT (erste 2000 Zeichen):
 {text[:2000]}
 
-Antworte nur mit der Kategorie, nichts anderes. Falls unsicher, wähle 'Sonstiges'."""
+WICHTIG: Antworte nur mit dem exakten Kategorienamen aus der Verzeichnisliste oben. Kein Text davor oder danach, nur der Kategoriename."""
 
     try:
         response = requests.post(
             CONFIG['LM_STUDIO_URL'],
             json={
-                "model": "deepseek-r1",
+                "model": "deepseek-r1-distill-qwen-7b",
                 "messages": [
+                    {"role": "system", "content": "Du bist ein Experte für deutsche Dokumentenklassifizierung. Antworte nur mit dem exakten Kategorienamen."},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.1,
-                "max_tokens": 50
+                "max_tokens": 100,
+                "stop": ["\n", ".", "!", "?"]
             },
             timeout=30
         )
 
         if response.status_code == 200:
             result = response.json()
-            category = result['choices'][0]['message']['content'].strip()
+            raw_response = result['choices'][0]['message']['content'].strip()
+
+            # Parse DeepSeek reasoning tokens - extract final answer
+            category = parse_ai_response(raw_response, categories)
+
+            logger.info("AI classification response",
+                       ai_response=raw_response[:100] + "..." if len(raw_response) > 100 else raw_response,
+                       parsed_category=category,
+                       available_categories=categories[:5],  # Log first 5 for brevity
+                       filename=filename)
 
             if category in categories:
+                logger.info("AI category match found", selected_category=category)
                 return category
             else:
-                return 'Sonstiges'
+                logger.warning("AI returned invalid category, using fallback",
+                              ai_response=raw_response[:100] + "..." if len(raw_response) > 100 else raw_response,
+                              parsed_category=category,
+                              available_categories=categories[:5],
+                              fallback=categories[0] if categories else '0001_scanbot')
+                # Falls AI eine ungültige Kategorie zurückgibt, verwende erste verfügbare
+                if categories:
+                    return categories[0]
+                else:
+                    return '0001_scanbot'  # Fallback für temporäre Dateien
         else:
-            print(f"LM Studio Error: {response.status_code}")
-            return 'Sonstiges'
+            logger.error("LM Studio API error", status_code=response.status_code, response_text=response.text)
+            return categories[0] if categories else '0001_scanbot'
 
     except Exception as e:
         print(f"Error calling LM Studio: {e}")
-        return 'Sonstiges'
+        return categories[0] if categories else '0001_scanbot'
 
 @app.route('/')
 def index():
@@ -307,10 +460,10 @@ def process_document():
         text = extract_text_from_pdf(pdf_path)
 
         # KI-Klassifizierung
-        suggested_category = classify_document(text)
+        filename = os.path.basename(pdf_path)
+        suggested_category = classify_document(text, filename)
 
         # Vorgeschlagenen Pfad generieren
-        filename = os.path.basename(pdf_path)
         suggested_path = os.path.join(CONFIG['SORTED_DIR'], suggested_category, filename)
 
         logger.info("PDF processing completed successfully",
@@ -407,7 +560,10 @@ def system_status():
 def directory_structure():
     """Verzeichnisstruktur für Frontend mit Blacklist-Filter"""
     tree = get_directory_tree(CONFIG['SORTED_DIR'])
-    return jsonify(tree)
+    return jsonify({
+        'structure': tree,
+        'base_path': CONFIG['SORTED_DIR']
+    })
 
 @app.route('/api/suggest-alternative-paths', methods=['POST'])
 def suggest_alternative_paths():

@@ -4,59 +4,6 @@ Integriert alle Services und stellt die Web-Oberfläche bereit
 
 TODO: Zukünftige Verbesserungen und Features
 
-1. Performance-Optimierungen:
-   - Async/Await für LLM-Anfragen implementieren
-   - Caching für häufig verwendete Kategorien
-   - Batch-Verarbeitung für multiple Dokumente
-
-2. Sicherheit:
-   - Authentifizierung hinzufügen
-   - Rate Limiting für API-Endpunkte
-   - Input Validation verstärken
-   - CSRF-Schutz implementieren
-
-3. Benutzerfreundlichkeit:
-   - Drag & Drop Upload
-   - Vorschau für PDF-Dokumente
-   - Fortschrittsanzeige bei Verarbeitung
-   - Bulk-Aktionen für mehrere Dokumente
-   - Undo/Redo Funktionalität
-
-4. Kategorieverwaltung:
-   - Hierarchische Kategorien
-   - Kategorie-Tags
-   - Automatische Kategorie-Vorschläge
-   - Kategorie-Statistiken
-
-5. LLM-Verbesserungen:
-   - Kontext-Lernen aus Benutzeraktionen
-   - Alternative LLM-Provider
-   - Offline-Fallback
-   - Konfidenz-Score für Klassifizierung
-
-6. Dateimanagement:
-   - Weitere Dateitypen unterstützen
-   - Automatische OCR für Scans
-   - Metadaten-Extraktion
-   - Versionierung von Dokumenten
-
-7. Integration:
-   - REST API für externe Systeme
-   - WebDAV/SMB Unterstützung
-   - Email-Import
-   - Cloud-Storage Anbindung
-
-8. Monitoring:
-   - Logging verbessern
-   - Metriken sammeln
-   - Error-Reporting
-   - Performance-Monitoring
-
-9. Tests:
-   - Unit Tests erweitern
-   - Integration Tests
-   - End-to-End Tests
-   - Performance Tests
 """
 from flask import Flask, render_template, request, jsonify
 from pathlib import Path

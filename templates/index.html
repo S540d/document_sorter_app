@@ -306,6 +306,22 @@
             margin-bottom: 10px;
         }
 
+        .global-search-container, .suggested-path-container {
+            position: relative;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(145deg, #e8f4fd 0%, #d1ecf1 100%);
+            border-radius: 8px;
+            border: 1px solid #b8e6f0;
+        }
+
+        .global-search-container label, .suggested-path-container label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #2c5282;
+        }
+
         .path-search-container {
             position: relative;
             margin-bottom: 15px;
@@ -317,6 +333,13 @@
             border: 1px solid #ddd;
             border-radius: 6px;
             font-size: 0.9rem;
+        }
+
+        #suggested-path-input {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            color: #495057;
+            font-family: monospace;
         }
 
         .autocomplete-dropdown {
@@ -624,6 +647,7 @@
         let currentDocument = null;
         let lastAction = null;
         let allDirectories = [];
+        let globalDirectories = [];
         let directoryStructure = {};
         window.appCategories = [];
         
@@ -700,10 +724,6 @@
         // Dokument anzeigen
         function displayDocument(data, filename) {
             const content = `
-                <div class="suggested-path-section">
-                    <h4>📂 Vorgeschlagener Zielpfad:</h4>
-                    <div class="suggested-path-display">${data.suggested_path}</div>
-                </div>
 
                 <div class="document-preview">
                     <div>
@@ -713,17 +733,23 @@
                     <div class="classification-panel">
                         <h3>📂 Klassifizierung</h3>
 
+                        <div class="global-search-container">
+                            <label for="global-path-search">🔍 Globale Pfadsuche:</label>
+                            <input type="text" id="global-path-search" class="path-search-input" placeholder="Suche in allen Verzeichnissen (z.B. 'Lesekram')">
+                            <div id="global-autocomplete-dropdown" class="autocomplete-dropdown"></div>
+                        </div>
+
+                        <div class="suggested-path-container">
+                            <label for="suggested-path-input">📋 Vorgeschlagener Pfad:</label>
+                            <input type="text" id="suggested-path-input" class="path-search-input" placeholder="Automatisch generierter Pfad" readonly>
+                        </div>
+
                         <label for="category-select">Kategorie:</label>
                         <select id="category-select" class="category-select" onchange="updatePath()">
                             ${window.appCategories.map(cat =>
                                 `<option value="${cat}" ${cat === data.suggested_category ? 'selected' : ''}>${cat}</option>`
                             ).join('')}
                         </select>
-
-                        <div class="path-search-container">
-                            <input type="text" id="path-search" class="path-search-input" placeholder="Suche nach Pfad (z.B. 'Lesekram')">
-                            <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
-                        </div>
 
                         <div class="path-browser" id="path-browser">
                             <div class="path-browser-header" onclick="togglePathBrowser()">
@@ -761,13 +787,22 @@
             loadDirectoryStructure();
 
             // Event-Listener für Kategorie-Änderung und Custom Path
-            document.getElementById('category-select').addEventListener('change', updatePath);
+            document.getElementById('category-select').addEventListener('change', function() {
+                updatePath();
+                updateAvailablePaths();
+            });
 
             // Event-Listener für Pfadsuche
             setupPathSearch();
 
+            // Event-Listener für globale Pfadsuche
+            setupGlobalPathSearch();
+
             // Lade Verzeichnisstruktur
             loadDirectoryStructure();
+
+            // Initial: Verfügbare Pfade basierend auf Kategorie aktualisieren
+            updateAvailablePaths();
 
             // Automatisch ähnliche Pfade suchen wenn Dokument geladen
             if (filename) {
@@ -784,22 +819,60 @@
             const sortedDir = currentDocument.suggested_path.split('/').slice(0, -2).join('/');
             const newPath = `${sortedDir}/${selectedCategory}/${filename}`;
 
-            // Update both displays (old and new)
-            const oldPathDisplay = document.getElementById('suggested-path');
-            if (oldPathDisplay) oldPathDisplay.textContent = newPath;
-
+            // Update the new suggested path display format
             const newPathDisplay = document.querySelector('.suggested-path-display');
             if (newPathDisplay) newPathDisplay.textContent = newPath;
 
+            // Update the suggested path input field
+            const suggestedPathInput = document.getElementById('suggested-path-input');
+            if (suggestedPathInput) suggestedPathInput.value = newPath;
+
+            // Legacy support for old elements if they exist
+            const oldPathDisplay = document.getElementById('suggested-path');
+            if (oldPathDisplay) oldPathDisplay.textContent = newPath;
+
             currentDocument.suggested_path = newPath;
         }
-        
+
+        // Verfügbare Pfade basierend auf ausgewählter Kategorie filtern
+        function updateAvailablePaths() {
+            const categorySelect = document.getElementById('category-select');
+            const directoryList = document.getElementById('directory-list');
+
+            if (!categorySelect || !directoryList || !directoryStructure) {
+                return;
+            }
+
+            const selectedCategory = categorySelect.value;
+            console.log('Updating available paths for category:', selectedCategory);
+
+            // Finde die ausgewählte Kategorie in der Struktur
+            const categoryData = directoryStructure[selectedCategory];
+
+            if (!categoryData || !categoryData.children) {
+                // Keine Unterverzeichnisse vorhanden
+                directoryList.innerHTML = '<div style="padding: 10px; color: #666;">Keine Unterverzeichnisse verfügbar</div>';
+                return;
+            }
+
+            // Zeige nur die Unterverzeichnisse der ausgewählten Kategorie
+            directoryList.innerHTML = '';
+            renderDirectoryStructure(categoryData.children, categoryData.path, directoryList, 0);
+
+            // Aktualisiere auch die Autocomplete-Liste für die gefilterten Pfade
+            allDirectories = flattenDirectoryForAutocomplete(categoryData.children, categoryData.path, 0);
+        }
+
         // Move-Operation ausführen
         async function executeMove() {
             if (!currentDocument) return;
-            
-            const finalPath = document.getElementById('suggested-path').textContent;
-            
+
+            // Use the suggested path input field as primary source
+            const suggestedPathInput = document.getElementById('suggested-path-input');
+            const pathDisplay = document.querySelector('.suggested-path-display');
+            const finalPath = suggestedPathInput ? suggestedPathInput.value :
+                             (pathDisplay ? pathDisplay.textContent : currentDocument.suggested_path);
+
             try {
                 const response = await fetch('/api/move-document', {
                     method: 'POST',
@@ -889,30 +962,43 @@
             try {
                 const response = await fetch('/api/directory-structure');
                 const data = await response.json();
+                console.log('Directory structure data:', data);
 
                 const directoryList = document.getElementById('directory-list');
+                if (!directoryList) {
+                    console.error('Directory list element not found');
+                    return;
+                }
+
                 directoryList.innerHTML = '';
 
                 // Speichere Struktur für spätere Nutzung
-                directoryStructure = data.structure;
+                directoryStructure = data.structure || data;
 
                 // Erstelle flache Liste für Autocomplete
-                allDirectories = flattenDirectoryForAutocomplete(data.structure, data.base_path);
+                allDirectories = flattenDirectoryForAutocomplete(data.structure || data, data.base_path || '');
+
+                // Erstelle globale Liste für die globale Suche
+                globalDirectories = createGlobalDirectoryList(data.structure || data, data.base_path || '');
 
                 // Rendere hierarchische Ansicht
-                directoryList.innerHTML = '';
-                renderDirectoryStructure(data.structure, data.base_path, directoryList);
+                renderDirectoryStructure(data.structure || data, data.base_path || '', directoryList);
 
             } catch (error) {
                 console.error('Error loading directory structure:', error);
-                document.getElementById('directory-list').innerHTML =
-                    '<div style="padding: 10px; color: #666;">Fehler beim Laden der Verzeichnisstruktur</div>';
+                const directoryList = document.getElementById('directory-list');
+                if (directoryList) {
+                    directoryList.innerHTML =
+                        '<div style="padding: 10px; color: #666;">Fehler beim Laden der Verzeichnisstruktur</div>';
+                }
             }
         }
 
         function renderDirectoryStructure(structure, basePath, container, level = 0) {
-            for (const [name, children] of Object.entries(structure)) {
-                const fullPath = `${basePath}/${name}`;
+            for (const [name, dirInfo] of Object.entries(structure)) {
+                // Handle new API structure where each entry has path, children, etc.
+                const fullPath = dirInfo.path || `${basePath}/${name}`;
+                const children = dirInfo.children || {};
                 const hasChildren = Object.keys(children).length > 0;
 
                 const div = document.createElement('div');
@@ -942,7 +1028,7 @@
 
                 // Kinder hinzufügen (initial versteckt)
                 if (hasChildren) {
-                    renderDirectoryStructure(children, fullPath, container, level + 1);
+                    renderDirectoryStructure(children, basePath, container, level + 1);
                 }
             }
         }
@@ -987,8 +1073,24 @@
             if (currentDocument) {
                 const filename = currentDocument.original_path.split('/').pop();
                 const newPath = `${dirPath}/${filename}`;
-                document.getElementById('suggested-path').textContent = newPath;
-                document.getElementById('custom-path').value = newPath;
+
+                // Update the suggested path display using the new format
+                const pathDisplay = document.querySelector('.suggested-path-display');
+                if (pathDisplay) {
+                    pathDisplay.textContent = newPath;
+                }
+
+                // Update the suggested path input field
+                const suggestedPathInput = document.getElementById('suggested-path-input');
+                if (suggestedPathInput) suggestedPathInput.value = newPath;
+
+                // Legacy support for old elements if they exist
+                const legacyPath = document.getElementById('suggested-path');
+                if (legacyPath) legacyPath.textContent = newPath;
+
+                const customPath = document.getElementById('custom-path');
+                if (customPath) customPath.value = newPath;
+
                 currentDocument.suggested_path = newPath;
             }
         }
@@ -1108,9 +1210,120 @@
             });
         }
 
+        function setupGlobalPathSearch() {
+            const searchInput = document.getElementById('global-path-search');
+            const dropdown = document.getElementById('global-autocomplete-dropdown');
+            let selectedIndex = -1;
+
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                if (query.length === 0) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                const matches = globalDirectories.filter(dir =>
+                    dir.name.toLowerCase().includes(query) ||
+                    dir.path.toLowerCase().includes(query)
+                ).slice(0, 10);
+
+                if (matches.length > 0) {
+                    dropdown.innerHTML = matches.map((dir, index) => `
+                        <div class="autocomplete-item" data-index="${index}" data-path="${dir.path}" data-category="${dir.category}">
+                            <strong>${dir.category}</strong> → ${dir.display}
+                        </div>
+                    `).join('');
+                    dropdown.style.display = 'block';
+                    selectedIndex = -1;
+                } else {
+                    dropdown.style.display = 'none';
+                }
+            });
+
+            searchInput.addEventListener('keydown', function(e) {
+                const items = dropdown.querySelectorAll('.autocomplete-item');
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                    updateGlobalSelection(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, -1);
+                    updateGlobalSelection(items);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && items[selectedIndex]) {
+                        selectFromGlobalAutocomplete(items[selectedIndex].dataset.path, items[selectedIndex].dataset.category);
+                    }
+                } else if (e.key === 'Escape') {
+                    dropdown.style.display = 'none';
+                    selectedIndex = -1;
+                }
+            });
+
+            dropdown.addEventListener('click', function(e) {
+                if (e.target.classList.contains('autocomplete-item')) {
+                    selectFromGlobalAutocomplete(e.target.dataset.path, e.target.dataset.category);
+                }
+            });
+
+            function updateGlobalSelection(items) {
+                items.forEach((item, index) => {
+                    item.classList.toggle('selected', index === selectedIndex);
+                });
+            }
+
+            function selectFromGlobalAutocomplete(path, category) {
+                // Setze die Kategorie automatisch
+                const categorySelect = document.getElementById('category-select');
+                if (categorySelect) {
+                    categorySelect.value = category;
+                }
+
+                // Aktualisiere den vorgeschlagenen Pfad
+                if (currentDocument) {
+                    const filename = currentDocument.original_path.split('/').pop();
+                    const newPath = `${path}/${filename}`;
+
+                    // Aktualisiere das vorgeschlagene Pfad-Eingabefeld
+                    const suggestedPathInput = document.getElementById('suggested-path-input');
+                    if (suggestedPathInput) {
+                        suggestedPathInput.value = newPath;
+                    }
+
+                    // Aktualisiere die Anzeige
+                    const pathDisplay = document.querySelector('.suggested-path-display');
+                    if (pathDisplay) {
+                        pathDisplay.textContent = newPath;
+                    }
+
+                    currentDocument.suggested_path = newPath;
+                }
+
+                // Aktualisiere verfügbare Pfade basierend auf neuer Kategorie
+                updatePath();
+                updateAvailablePaths();
+
+                // Verstecke Dropdown und leere Suchfeld
+                searchInput.value = '';
+                dropdown.style.display = 'none';
+                selectedIndex = -1;
+            }
+
+            // Schließe Dropdown bei Klick außerhalb
+            document.addEventListener('click', function(e) {
+                if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.style.display = 'none';
+                }
+            });
+        }
+
         function flattenDirectoryForAutocomplete(structure, basePath, level = 0, result = []) {
-            for (const [name, children] of Object.entries(structure)) {
-                const fullPath = `${basePath}/${name}`;
+            for (const [name, dirInfo] of Object.entries(structure)) {
+                // Handle new API structure
+                const fullPath = dirInfo.path || `${basePath}/${name}`;
+                const children = dirInfo.children || {};
                 const display = '  '.repeat(level) + (level > 0 ? '📁 ' : '') + name;
 
                 result.push({
@@ -1127,14 +1340,63 @@
             return result;
         }
 
+        function createGlobalDirectoryList(structure, basePath) {
+            const result = [];
+
+            for (const [categoryName, categoryInfo] of Object.entries(structure)) {
+                // Füge die Kategorie selbst hinzu
+                result.push({
+                    name: categoryName,
+                    path: categoryInfo.path || `${basePath}/${categoryName}`,
+                    display: categoryName,
+                    level: 0,
+                    category: categoryName
+                });
+
+                // Füge alle Unterverzeichnisse mit Kategorie-Information hinzu
+                if (categoryInfo.children && Object.keys(categoryInfo.children).length > 0) {
+                    addChildrenToGlobalList(categoryInfo.children, categoryInfo.path || `${basePath}/${categoryName}`, 1, categoryName, result);
+                }
+            }
+
+            return result;
+        }
+
+        function addChildrenToGlobalList(children, basePath, level, category, result) {
+            for (const [name, dirInfo] of Object.entries(children)) {
+                const fullPath = dirInfo.path || `${basePath}/${name}`;
+                const display = '  '.repeat(level) + name;
+
+                result.push({
+                    name: name,
+                    path: fullPath,
+                    display: display,
+                    level: level,
+                    category: category
+                });
+
+                if (dirInfo.children && Object.keys(dirInfo.children).length > 0) {
+                    addChildrenToGlobalList(dirInfo.children, fullPath, level + 1, category, result);
+                }
+            }
+        }
+
         // Kategorien vom Backend laden
         async function loadCategories() {
             try {
                 const response = await fetch('/api/directory-structure');
                 const data = await response.json();
-                // Extract directory names as categories
-                window.appCategories = Object.keys(data).sort();
-                console.log('Loaded categories from API:', window.appCategories);
+                console.log('Raw API response:', data);
+
+                // Extract directory names as categories from structure
+                if (data.structure && typeof data.structure === 'object') {
+                    window.appCategories = Object.keys(data.structure).sort();
+                    console.log('Loaded categories from API structure:', window.appCategories);
+                } else {
+                    // Fallback if structure is not available
+                    window.appCategories = Object.keys(data).filter(key => key !== 'base_path').sort();
+                    console.log('Loaded categories from API root (fallback):', window.appCategories);
+                }
             } catch (error) {
                 console.error('Error loading categories:', error);
                 // Fallback Kategorien - aus Documents-Struktur
@@ -1299,59 +1561,6 @@
         }
 
 
-        async function loadDirectoryStructure() {
-            try {
-                const response = await fetch('/api/directory-structure');
-                const tree = await response.json();
-
-                const directoryList = document.getElementById('directory-list');
-                if (directoryList) {
-                    directoryList.innerHTML = renderDirectoryTree(tree);
-                }
-            } catch (error) {
-                console.error('Error loading directory structure:', error);
-                const directoryList = document.getElementById('directory-list');
-                if (directoryList) {
-                    directoryList.innerHTML = '<div style="color: red;">Fehler beim Laden der Verzeichnisstruktur</div>';
-                }
-            }
-        }
-
-        function renderDirectoryTree(tree, level = 0) {
-            let html = '';
-            for (const [name, info] of Object.entries(tree)) {
-                const indent = '&nbsp;'.repeat(level * 4);
-                const hasChildren = info.has_children;
-                const icon = hasChildren ? '📁' : '📄';
-
-                html += `
-                    <div class="directory-item" style="margin-left: ${level * 15}px; cursor: pointer;"
-                         onclick="selectDirectory('${info.path}')">
-                        ${icon} ${name}
-                    </div>
-                `;
-
-                if (hasChildren && level < 2) {
-                    html += renderDirectoryTree(info.children, level + 1);
-                }
-            }
-            return html;
-        }
-
-        function selectDirectory(path) {
-            if (currentDocument) {
-                const filename = currentDocument.original_path.split('/').pop();
-                const newPath = path + '/' + filename;
-
-                // Update suggested path display
-                const pathDisplay = document.querySelector('.suggested-path-display');
-                if (pathDisplay) {
-                    pathDisplay.textContent = newPath;
-                }
-
-                currentDocument.suggested_path = newPath;
-            }
-        }
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeApp);

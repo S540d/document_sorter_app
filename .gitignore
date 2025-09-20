@@ -1,17 +1,8 @@
-# Environment variables
-.env
-.env.local
-.env.production
-.env.test
+# ===========================================
+# Python Flask Project .gitignore
+# ===========================================
 
-# Local configuration files
-config.local.*
-config.local.json
-config.local.yaml
-config.local.yml
-config_secret.py
-
-# Python
+# ===== Python =====
 __pycache__/
 *.py[cod]
 *$py.class
@@ -34,62 +25,43 @@ wheels/
 *.egg
 MANIFEST
 
-# Virtual environments
+# ===== Virtual Environments =====
 venv/
 env/
 ENV/
 .venv/
 
-# IDEs (keep .vscode for development but ignore user-specific settings)
-.vscode/settings.json
-.vscode/extensions.json
-.idea/
-*.swp
-*.swo
-*~
+# ===== Configuration and Secrets =====
+.env
+.env.local
+.env.production
+.env.test
+config.local.*
+config.local.json
+config.local.yaml
+config.local.yml
+config_secret.py
 
-# Claude AI settings (contains personal paths and permissions)
-.claude/
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Logs
-*.log
-logs/
-
-# Personal directories (examples - users should adapt)
-# Add your specific paths here:
-# /Users/username/Documents
-# /Users/username/Desktop/scans
-# /path/to/your/scan/directory
-
-# Cache and temporary files
-.cache/
-.tmp/
-temp/
-tmp/
-
-# Flask
+# ===== Flask =====
 instance/
 .webassets-cache
 
-# Database
+# ===== Database =====
 *.db
 *.sqlite
 *.sqlite3
 
-# Testing
+# ===== Testing =====
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
 
-# Documentation builds
+# ===== Documentation =====
 docs/_build/
+
+# ===== Project-specific =====
+# Personal directories (examples - adapt as needed)
+# /Users/username/Documents
+# /Users/username/Desktop/scans
+# /path/to/your/scan/directory
