@@ -481,6 +481,79 @@
             font-size: 0.9rem;
             word-break: break-all;
         }
+
+        .filename-info-section {
+            background: #f8f9ff;
+            border: 1px solid #e0e6ff;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .filename-info-section h4 {
+            margin: 0 0 10px 0;
+            color: #4a5568;
+        }
+
+        .filename-details {
+            font-size: 0.9rem;
+        }
+
+        .filename-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .filename-row strong {
+            min-width: 120px;
+            color: #2d3748;
+        }
+
+        .filename-original {
+            font-family: monospace;
+            background: #fff2f2;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #fed7d7;
+        }
+
+        .filename-suggested {
+            font-family: monospace;
+            background: #f0fff4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #c6f6d5;
+            font-weight: bold;
+        }
+
+        .filename-dates {
+            font-family: monospace;
+            background: #f7fafc;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .filename-selected-date {
+            font-family: monospace;
+            background: #fff5b4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #f6e05e;
+            font-weight: bold;
+        }
+
+        .date-source-badge {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
         
         .action-buttons {
             display: flex;
@@ -530,6 +603,59 @@
             background: #5a6268;
         }
         
+        .suggested-path-section-top {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #2196F3;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #f3f9ff 0%, #e8f4f8 100%);
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.15);
+        }
+
+        .suggested-path-section-top h4 {
+            margin: 0 0 15px 0;
+            color: #2196F3;
+            font-weight: bold;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .suggested-path-input-top {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #2196F3;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            background-color: #ffffff;
+            color: #333;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.1);
+        }
+
+        .ai-indicator {
+            font-size: 0.9rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .ai-indicator.ai-powered {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        .ai-indicator.fallback {
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+        }
+
         .suggested-path-section {
             margin: 20px 0;
             padding: 15px;
@@ -693,12 +819,13 @@
                 item.classList.remove('active');
             });
             event.target.closest('.file-item').classList.add('active');
-            
+
             // Loading-Anzeige
-            document.getElementById('document-content').innerHTML = 
+            document.getElementById('document-content').innerHTML =
                 '<div class="loading">Verarbeite Dokument...</div>';
-            
+
             try {
+                console.log('Processing document:', path);
                 const response = await fetch('/api/process-document', {
                     method: 'POST',
                     headers: {
@@ -706,107 +833,173 @@
                     },
                     body: JSON.stringify({ path: path })
                 });
-                
+
+                console.log('Response status:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error:', errorText);
+                    showStatus(`API Fehler (${response.status}): ${errorText}`, 'error');
+                    return;
+                }
+
                 const data = await response.json();
-                
-                if (response.ok) {
+                console.log('API Response data:', data);
+
+                if (data && data.preview) {
                     currentDocument = data;
+                    console.log('Calling displayDocument with:', data, name);
                     displayDocument(data, name);
                 } else {
-                    showStatus(`Fehler: ${data.error}`, 'error');
+                    console.error('Invalid response data:', data);
+                    showStatus('Ungültige API-Antwort: Fehlende Daten', 'error');
                 }
             } catch (error) {
                 console.error('Error processing document:', error);
-                showStatus('Fehler bei der Dokumentenverarbeitung', 'error');
+                showStatus(`Fehler bei der Dokumentenverarbeitung: ${error.message}`, 'error');
             }
         }
         
         // Dokument anzeigen
         function displayDocument(data, filename) {
-            const content = `
+            try {
+                console.log('displayDocument called with:', data, filename);
 
-                <div class="document-preview">
-                    <div>
-                        <img src="${data.preview}" alt="PDF Preview" class="preview-image">
+                if (!data || !data.preview) {
+                    console.error('Missing required data fields:', data);
+                    showStatus('Fehler: Unvollständige Dokumentdaten', 'error');
+                    return;
+                }
+
+                if (!window.appCategories || window.appCategories.length === 0) {
+                    console.error('Categories not loaded yet');
+                    showStatus('Fehler: Kategorien nicht geladen', 'error');
+                    return;
+                }
+
+                const suggestedCategory = data.suggested_category || window.appCategories[0];
+                console.log('Using suggested category:', suggestedCategory);
+
+                const content = `
+                    <!-- Suggested Path Section - Full Width at Top -->
+                    <div class="suggested-path-section-top">
+                        <h4>📋 Vorgeschlagener Pfad <span id="ai-indicator" class="ai-indicator"></span></h4>
+                        <div class="suggested-path-display-top">
+                            <input type="text" id="suggested-path-input" class="suggested-path-input-top" value="${data.suggested_path || ''}" readonly>
+                        </div>
                     </div>
-                    
-                    <div class="classification-panel">
-                        <h3>📂 Klassifizierung</h3>
 
-                        <div class="global-search-container">
-                            <label for="global-path-search">🔍 Globale Pfadsuche:</label>
-                            <input type="text" id="global-path-search" class="path-search-input" placeholder="Suche in allen Verzeichnissen (z.B. 'Lesekram')">
-                            <div id="global-autocomplete-dropdown" class="autocomplete-dropdown"></div>
-                        </div>
-
-                        <div class="suggested-path-container">
-                            <label for="suggested-path-input">📋 Vorgeschlagener Pfad:</label>
-                            <input type="text" id="suggested-path-input" class="path-search-input" placeholder="Automatisch generierter Pfad" readonly>
-                        </div>
-
-                        <label for="category-select">Kategorie:</label>
-                        <select id="category-select" class="category-select" onchange="updatePath()">
-                            ${window.appCategories.map(cat =>
-                                `<option value="${cat}" ${cat === data.suggested_category ? 'selected' : ''}>${cat}</option>`
-                            ).join('')}
-                        </select>
-
-                        <div class="path-browser" id="path-browser">
-                            <div class="path-browser-header" onclick="togglePathBrowser()">
-                                📁 Verfügbare Pfade
-                                <span class="collapse-icon">▼</span>
+                    <!-- Filename Information Section -->
+                    ${data.filename_suggestion ? `
+                    <div class="filename-info-section">
+                        <h4>📝 Dateiname-Informationen</h4>
+                        <div class="filename-details">
+                            <div class="filename-row">
+                                <strong>Original:</strong> <span class="filename-original">${data.filename_suggestion.original_filename}</span>
                             </div>
-                            <div id="directory-list">Lade Verzeichnisstruktur...</div>
-                        </div>
-
-
-                        <div id="smart-suggestions" style="display: none; margin-bottom: 15px;">
-                            <h4 style="color: #667eea; margin-bottom: 10px;">🎯 Intelligente Pfadvorschläge</h4>
-                            <div id="suggestion-list"></div>
-                        </div>
-
-                        <div class="action-buttons">
-                            <button class="btn btn-primary" onclick="executeMove()">
-                                ✅ Verschieben
-                            </button>
-                            <button class="btn btn-secondary" onclick="updatePath()">
-                                🔄 Pfad aktualisieren
-                            </button>
-                            <button class="btn btn-undo" id="undo-btn" onclick="undoLastAction()" disabled>
-                                ↶ Rückgängig
-                            </button>
+                            <div class="filename-row">
+                                <strong>Vorschlag:</strong> <span class="filename-suggested">${data.filename_suggestion.suggested_filename}</span>
+                            </div>
+                            ${data.filename_suggestion.extracted_dates && data.filename_suggestion.extracted_dates.length > 0 ? `
+                            <div class="filename-row">
+                                <strong>Gefundene Daten:</strong> <span class="filename-dates">${data.filename_suggestion.extracted_dates.join(', ')}</span>
+                            </div>
+                            ` : ''}
+                            ${data.filename_suggestion.selected_date ? `
+                            <div class="filename-row">
+                                <strong>Verwendetes Datum:</strong> <span class="filename-selected-date">${data.filename_suggestion.selected_date}</span>
+                                <span class="date-source-badge">${data.filename_suggestion.date_source === 'content' ? '📄 Aus Inhalt' : '📅 Fallback'}</span>
+                            </div>
+                            ` : ''}
                         </div>
                     </div>
-                </div>
-                
-            `;
-            
-            document.getElementById('document-content').innerHTML = content;
+                    ` : ''}
 
-            // Verzeichnisstruktur laden
-            loadDirectoryStructure();
+                    <div class="document-preview">
+                        <div>
+                            <img src="${data.preview}" alt="PDF Preview" class="preview-image">
+                        </div>
 
-            // Event-Listener für Kategorie-Änderung und Custom Path
-            document.getElementById('category-select').addEventListener('change', function() {
-                updatePath();
+                        <div class="classification-panel">
+                            <h3>📂 Klassifizierung</h3>
+
+                            <div class="global-search-container">
+                                <label for="global-path-search">🔍 Globale Pfadsuche:</label>
+                                <input type="text" id="global-path-search" class="path-search-input" placeholder="Suche in allen Verzeichnissen (z.B. 'Lesekram')">
+                                <div id="global-autocomplete-dropdown" class="autocomplete-dropdown"></div>
+                            </div>
+
+                            <label for="category-select">Kategorie:</label>
+                            <select id="category-select" class="category-select" onchange="updatePath()">
+                                ${window.appCategories.map(cat =>
+                                    `<option value="${cat}" ${cat === suggestedCategory ? 'selected' : ''}>${cat}</option>`
+                                ).join('')}
+                            </select>
+
+                            <div class="path-browser" id="path-browser">
+                                <div class="path-browser-header" onclick="togglePathBrowser()">
+                                    📁 Verfügbare Pfade
+                                    <span class="collapse-icon">▼</span>
+                                </div>
+                                <div id="directory-list">Lade Verzeichnisstruktur...</div>
+                            </div>
+
+                            <div id="smart-suggestions" style="display: none; margin-bottom: 15px;">
+                                <h4 style="color: #667eea; margin-bottom: 10px;">🎯 Intelligente Pfadvorschläge</h4>
+                                <div id="suggestion-list"></div>
+                            </div>
+
+                            <div class="action-buttons">
+                                <button class="btn btn-primary" onclick="executeMove()">
+                                    ✅ Verschieben
+                                </button>
+                                <button class="btn btn-secondary" onclick="updatePath()">
+                                    🔄 Pfad aktualisieren
+                                </button>
+                                <button class="btn btn-undo" id="undo-btn" onclick="undoLastAction()" disabled>
+                                    ↶ Rückgängig
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('document-content').innerHTML = content;
+                console.log('Content set successfully');
+
+                // Set AI indicator based on confidence and fallback_used
+                setAIIndicator(data);
+
+                // Verzeichnisstruktur laden
+                loadDirectoryStructure();
+
+                // Event-Listener für Kategorie-Änderung und Custom Path
+                const categorySelect = document.getElementById('category-select');
+                if (categorySelect) {
+                    categorySelect.addEventListener('change', function() {
+                        updatePath();
+                        updateAvailablePaths();
+                    });
+                }
+
+                // Event-Listener für Pfadsuche
+                setupPathSearch();
+
+                // Event-Listener für globale Pfadsuche
+                setupGlobalPathSearch();
+
+                // Initial: Verfügbare Pfade basierend auf Kategorie aktualisieren
                 updateAvailablePaths();
-            });
 
-            // Event-Listener für Pfadsuche
-            setupPathSearch();
+                // Automatisch ähnliche Pfade suchen wenn Dokument geladen
+                if (filename) {
+                    findSimilarPathsAutomatic(filename);
+                }
 
-            // Event-Listener für globale Pfadsuche
-            setupGlobalPathSearch();
-
-            // Lade Verzeichnisstruktur
-            loadDirectoryStructure();
-
-            // Initial: Verfügbare Pfade basierend auf Kategorie aktualisieren
-            updateAvailablePaths();
-
-            // Automatisch ähnliche Pfade suchen wenn Dokument geladen
-            if (filename) {
-                findSimilarPathsAutomatic(filename);
+                console.log('displayDocument completed successfully');
+            } catch (error) {
+                console.error('Error in displayDocument:', error);
+                showStatus(`Fehler beim Anzeigen des Dokuments: ${error.message}`, 'error');
             }
         }
         
@@ -819,17 +1012,24 @@
             const sortedDir = currentDocument.suggested_path.split('/').slice(0, -2).join('/');
             const newPath = `${sortedDir}/${selectedCategory}/${filename}`;
 
-            // Update the new suggested path display format
-            const newPathDisplay = document.querySelector('.suggested-path-display');
-            if (newPathDisplay) newPathDisplay.textContent = newPath;
-
-            // Update the suggested path input field
+            // Update the main suggested path input field (top section)
             const suggestedPathInput = document.getElementById('suggested-path-input');
             if (suggestedPathInput) suggestedPathInput.value = newPath;
 
             // Legacy support for old elements if they exist
+            const newPathDisplay = document.querySelector('.suggested-path-display');
+            if (newPathDisplay) newPathDisplay.textContent = newPath;
+
             const oldPathDisplay = document.getElementById('suggested-path');
             if (oldPathDisplay) oldPathDisplay.textContent = newPath;
+
+            // Update AI indicator to show this is user-modified (fallback)
+            const indicator = document.getElementById('ai-indicator');
+            if (indicator) {
+                indicator.className = 'ai-indicator fallback';
+                indicator.textContent = '👤 Benutzer-Anpassung';
+                indicator.title = 'Dieser Pfad wurde vom Benutzer angepasst';
+            }
 
             currentDocument.suggested_path = newPath;
         }
@@ -1074,22 +1274,27 @@
                 const filename = currentDocument.original_path.split('/').pop();
                 const newPath = `${dirPath}/${filename}`;
 
-                // Update the suggested path display using the new format
-                const pathDisplay = document.querySelector('.suggested-path-display');
-                if (pathDisplay) {
-                    pathDisplay.textContent = newPath;
-                }
-
-                // Update the suggested path input field
+                // Update the main suggested path input field (top section)
                 const suggestedPathInput = document.getElementById('suggested-path-input');
                 if (suggestedPathInput) suggestedPathInput.value = newPath;
 
                 // Legacy support for old elements if they exist
+                const pathDisplay = document.querySelector('.suggested-path-display');
+                if (pathDisplay) pathDisplay.textContent = newPath;
+
                 const legacyPath = document.getElementById('suggested-path');
                 if (legacyPath) legacyPath.textContent = newPath;
 
                 const customPath = document.getElementById('custom-path');
                 if (customPath) customPath.value = newPath;
+
+                // Update AI indicator to show this is user-selected directory
+                const indicator = document.getElementById('ai-indicator');
+                if (indicator) {
+                    indicator.className = 'ai-indicator fallback';
+                    indicator.textContent = '👤 Benutzer-Auswahl';
+                    indicator.title = 'Dieser Pfad wurde vom Benutzer aus der Verzeichnisstruktur ausgewählt';
+                }
 
                 currentDocument.suggested_path = newPath;
             }
@@ -1104,7 +1309,7 @@
         let refreshInterval;
 
         function startSmartRefresh() {
-            // Refresh nur während Preloading aktiv ist
+            // Kontinuierliches Refresh für Systemmetriken
             if (refreshInterval) clearInterval(refreshInterval);
 
             refreshInterval = setInterval(async () => {
@@ -1112,17 +1317,28 @@
                     const response = await fetch('/api/system-status');
                     const data = await response.json();
 
-                    updateSystemStatus(data.system_stats, data.preload_status, data.cached_count, 0);
+                    // Aktualisiere Footer-Metriken
+                    updateSystemMetricsFooter(data.system_stats, data.preload_status, data.cached_count, 0);
 
-                    // Stoppe Auto-Refresh wenn Preloading fertig
-                    if (!data.preload_status.is_running && data.preload_complete) {
-                        clearInterval(refreshInterval);
-                        console.log("Preloading complete - stopping auto-refresh");
-                    }
+                    console.log('System metrics updated:', data.system_stats);
                 } catch (error) {
-                    console.error('Error updating status:', error);
+                    console.error('Error updating system metrics:', error);
                 }
-            }, 3000); // Alle 3 Sekunden während Preloading
+            }, 5000); // Alle 5 Sekunden
+
+            // Initial Update
+            updateSystemMetrics();
+        }
+
+        async function updateSystemMetrics() {
+            try {
+                const response = await fetch('/api/system-status');
+                const data = await response.json();
+                updateSystemMetricsFooter(data.system_stats, data.preload_status, data.cached_count, 0);
+                console.log('Initial system metrics loaded:', data.system_stats);
+            } catch (error) {
+                console.error('Error loading initial system metrics:', error);
+            }
         }
 
         // Neue Funktionen
@@ -1134,6 +1350,12 @@
         function setupPathSearch() {
             const searchInput = document.getElementById('path-search');
             const dropdown = document.getElementById('autocomplete-dropdown');
+
+            // Check if elements exist before setting up listeners
+            if (!searchInput || !dropdown) {
+                console.log('Path search elements not found, skipping setup');
+                return;
+            }
             let selectedIndex = -1;
 
             searchInput.addEventListener('input', function() {
@@ -1213,6 +1435,13 @@
         function setupGlobalPathSearch() {
             const searchInput = document.getElementById('global-path-search');
             const dropdown = document.getElementById('global-autocomplete-dropdown');
+
+            // Check if elements exist before setting up listeners
+            if (!searchInput || !dropdown) {
+                console.log('Global path search elements not found, skipping setup');
+                return;
+            }
+
             let selectedIndex = -1;
 
             searchInput.addEventListener('input', function() {
@@ -1286,16 +1515,24 @@
                     const filename = currentDocument.original_path.split('/').pop();
                     const newPath = `${path}/${filename}`;
 
-                    // Aktualisiere das vorgeschlagene Pfad-Eingabefeld
+                    // Aktualisiere das vorgeschlagene Pfad-Eingabefeld (top section)
                     const suggestedPathInput = document.getElementById('suggested-path-input');
                     if (suggestedPathInput) {
                         suggestedPathInput.value = newPath;
                     }
 
-                    // Aktualisiere die Anzeige
+                    // Legacy support
                     const pathDisplay = document.querySelector('.suggested-path-display');
                     if (pathDisplay) {
                         pathDisplay.textContent = newPath;
+                    }
+
+                    // Update AI indicator to show this is user search result
+                    const indicator = document.getElementById('ai-indicator');
+                    if (indicator) {
+                        indicator.className = 'ai-indicator fallback';
+                        indicator.textContent = '🔍 Benutzer-Suche';
+                        indicator.title = 'Dieser Pfad wurde durch Benutzer-Suche gefunden';
                     }
 
                     currentDocument.suggested_path = newPath;
@@ -1378,6 +1615,30 @@
                 if (dirInfo.children && Object.keys(dirInfo.children).length > 0) {
                     addChildrenToGlobalList(dirInfo.children, fullPath, level + 1, category, result);
                 }
+            }
+        }
+
+        // AI Indicator setzen basierend auf Confidence und Fallback-Status
+        function setAIIndicator(data) {
+            const indicator = document.getElementById('ai-indicator');
+            if (!indicator) return;
+
+            console.log('Setting AI indicator with data:', {
+                confidence: data.confidence,
+                fallback_used: data.fallback_used
+            });
+
+            // Bestimme ob AI oder Fallback verwendet wurde
+            const isAIPowered = data.confidence === 'high' && !data.fallback_used;
+
+            if (isAIPowered) {
+                indicator.className = 'ai-indicator ai-powered';
+                indicator.textContent = '🤖 KI-Vorschlag';
+                indicator.title = 'Dieser Pfad wurde von der KI vorgeschlagen';
+            } else {
+                indicator.className = 'ai-indicator fallback';
+                indicator.textContent = '🔄 Fallback';
+                indicator.title = 'Dieser Pfad wurde vom Fallback-System vorgeschlagen (KI nicht verfügbar)';
             }
         }
 
