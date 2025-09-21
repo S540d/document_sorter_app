@@ -17,7 +17,7 @@ class PromptManager:
     def _get_classification_template(self) -> str:
         """Get the main classification prompt template"""
         return """Du bist ein Experte für deutsche Dokumentenklassifizierung.
-Analysiere das Dokument und wähle die beste Kategorie basierend auf Inhalt, Dateiname und verfügbaren Verzeichnissen.
+Analysiere das Dokument und wähle die beste Kategorie UND das beste Unterverzeichnis basierend auf Inhalt, Dateiname und verfügbaren Verzeichnissen.
 
 DOKUMENT-KONTEXT:
 - Dateiname: {filename}
@@ -29,17 +29,28 @@ VERFÜGBARE KATEGORIEN MIT STRUKTUR:
 
 KLASSIFIZIERUNGS-REGELN:
 1. Wähle die spezifischste passende Kategorie aus der obigen Liste
-2. Bei Kita/Kindergarten-Dokumenten → entsprechende Wohn- oder Schriftverkehr-Kategorie
-3. Bei Arbeitsdokumenten → Arbeitskategorie
-4. Bei Finanzen/Steuern/Versicherungen → Finanzkategorie
-5. Bei Fahrzeugen → Fahrzeugkategorie
-6. Bei Wissenschaft/Studium → Bildungskategorie
-7. Bei Wohnen/Miete → Wohnkategorie
+2. Wenn verfügbar, wähle auch das passendste Unterverzeichnis
+3. Bei Kita/Kindergarten-Dokumenten → entsprechende Wohn- oder Schriftverkehr-Kategorie
+4. Bei Arbeitsdokumenten → Arbeitskategorie (z.B. deutsche_bahn, evg)
+5. Bei Finanzen/Steuern/Versicherungen → Finanzkategorie (z.B. banken, versicherungen)
+6. Bei Fahrzeugen → Fahrzeugkategorie (z.B. auto, motorrad)
+7. Bei Wissenschaft/Studium → Bildungskategorie
+8. Bei Wohnen/Miete → Wohnkategorie (z.B. mietvertrag, hausverwaltung)
 
 DOKUMENTENTEXT (erste 2000 Zeichen):
 {text_sample}
 
-WICHTIG: Antworte nur mit dem exakten Kategorienamen aus der Verzeichnisliste oben. Kein Text davor oder danach, nur der Kategoriename."""
+ANTWORT-FORMAT:
+Antworte im Format: "KATEGORIE|UNTERVERZEICHNIS"
+- KATEGORIE: Der exakte Hauptkategorienname aus der Liste oben
+- UNTERVERZEICHNIS: Das passende Unterverzeichnis (falls vorhanden), sonst leer lassen
+
+Beispiele:
+- "11 finanzen|banken"
+- "10_arbeit|deutsche_bahn"
+- "Sonstiges|" (wenn kein Unterverzeichnis passt)
+
+WICHTIG: Nur dieses Format verwenden. Kein zusätzlicher Text."""
 
     def _get_context_hints(self) -> Dict[str, List[str]]:
         """Get context hint patterns for document analysis"""

@@ -57,7 +57,7 @@
         
         .main-content {
             display: grid;
-            grid-template-columns: 300px 1fr;
+            grid-template-columns: 280px 1fr 1fr;
             gap: 0;
             min-height: 600px;
         }
@@ -67,6 +67,37 @@
             padding: 30px;
             border-right: 1px solid #dee2e6;
             box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        }
+
+        .intelligent-column {
+            background: linear-gradient(180deg, #f0f8ff 0%, #e6f3ff 100%);
+            padding: 25px;
+            border-right: 1px solid #dee2e6;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+        }
+
+        .manual-column {
+            background: linear-gradient(180deg, #fff8f0 0%, #ffeee6 100%);
+            padding: 25px;
+        }
+
+        .column-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .intelligent-column .column-header {
+            color: #1976d2;
+        }
+
+        .manual-column .column-header {
+            color: #f57c00;
         }
         
         .file-list {
@@ -554,11 +585,381 @@
             font-size: 0.75rem;
             font-weight: bold;
         }
-        
-        .action-buttons {
+
+        /* New Workflow Design */
+        .processing-workflow {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+
+        .workflow-step {
+            background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);
+            border: 2px solid #e8eeff;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .workflow-step:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+            border-color: #d0deff;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e8eeff;
+        }
+
+        .step-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .step-header h3 {
+            margin: 0;
+            color: #4a5568;
+            font-size: 1.3rem;
+            flex: 1;
+        }
+
+        .filename-mode-toggle {
+            display: flex;
+            gap: 15px;
+            background: white;
+            padding: 8px;
+            border-radius: 25px;
+            border: 2px solid #e8eeff;
+            flex-wrap: wrap;
+        }
+
+        .filename-mode-toggle input[type="radio"] {
+            display: none;
+        }
+
+        .filename-mode-toggle label {
+            padding: 8px 20px;
+            border-radius: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            background: transparent;
+            color: #666;
+        }
+
+        .filename-mode-toggle input[type="radio"]:checked + label {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .path-selection-section, .filename-configuration {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .suggested-path-display, .current-filename, .smart-filename-section, .date-filename-section {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #e8eeff;
+        }
+
+        .path-input-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .path-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e8eeff;
+            border-radius: 8px;
+            font-family: monospace;
+            background: #f8faff;
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+
+        .path-input:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-icon {
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .btn-icon:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .path-customization {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .category-selection, .global-search-container {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #e8eeff;
+        }
+
+        .category-select, .path-search-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e8eeff;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+
+        .category-select:focus, .path-search-input:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .ai-suggestions-display {
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #d0d9ff;
+            margin-bottom: 15px;
+        }
+
+        .ai-suggestions-display label {
+            font-weight: bold;
+            color: #667eea;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .ai-suggestion-chips {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
+        }
+
+        .ai-chip {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: 2px solid;
+        }
+
+        .category-chip {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .subdirectory-chip {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border-color: #28a745;
+        }
+
+        .filename-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+
+        .filename-display.original {
+            background: #fff5f5;
+            border: 2px solid #fed7d7;
+        }
+
+        .filename-display.smart {
+            background: #f0fff4;
+            border: 2px solid #c6f6d5;
+        }
+
+        .filename-text {
+            flex: 1;
+            font-family: monospace;
+            font-weight: 500;
+            color: #2d3748;
+        }
+
+        .filename-details {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e8eeff;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .detail-value {
+            font-family: monospace;
+            background: #f7fafc;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .final-summary {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e8eeff;
+            margin-bottom: 20px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px 0;
+        }
+
+        .summary-row:not(:last-child) {
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .summary-value {
+            font-family: monospace;
+            background: #f8faff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            max-width: 60%;
+            word-break: break-all;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover:before {
+            left: 100%;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+        }
+
+        .preview-container {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .preview-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 768px) {
+            .path-customization {
+                grid-template-columns: 1fr;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .summary-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+
+            .summary-value {
+                max-width: 100%;
+            }
         }
 
         .btn-undo {
@@ -656,6 +1057,367 @@
             box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
         }
 
+        /* Compact Filename Configuration */
+        .filename-configuration.compact {
+            padding: 15px 0;
+        }
+
+        .filename-options {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .filename-option {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .filename-option:hover {
+            border-color: #2196F3;
+            background: #f8f9ff;
+        }
+
+        .filename-option input[type="radio"] {
+            display: none;
+        }
+
+        .filename-option input[type="radio"]:checked + label {
+            color: #2196F3;
+        }
+
+        .filename-option input[type="radio"]:checked {
+            background: #2196F3;
+        }
+
+        .filename-option.selected {
+            border-color: #2196F3;
+            background: #f0f8ff;
+        }
+
+        .filename-option label {
+            cursor: pointer;
+            display: block;
+            margin: 0;
+        }
+
+        .filename-option strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.9rem;
+        }
+
+        .filename-preview {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #666;
+            background: #f5f5f5;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-top: 4px;
+            word-break: break-all;
+        }
+
+        .option-badge {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1976d2;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* Intelligent Details Section */
+        .intelligent-details {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .details-header {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .details-header:hover {
+            background: #e9ecef;
+        }
+
+        .toggle-icon {
+            transition: transform 0.2s ease;
+        }
+
+        .toggle-icon.rotated {
+            transform: rotate(180deg);
+        }
+
+        .details-content {
+            padding: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .detail-icon {
+            font-size: 1rem;
+            width: 20px;
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: #555;
+            min-width: 120px;
+        }
+
+        .detail-value {
+            color: #333;
+            flex: 1;
+        }
+
+        .clickable-value, .clickable-date {
+            cursor: pointer;
+            color: #2196F3;
+            text-decoration: underline;
+            font-weight: 500;
+        }
+
+        .clickable-value:hover, .clickable-date:hover {
+            color: #1976D2;
+            background: rgba(33, 150, 243, 0.1);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        /* New Workflow Styles */
+        .ai-analysis, .manual-workflow {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ai-header, .manual-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .ai-confidence {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .ai-confidence.high {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .ai-confidence.medium {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .result-section {
+            margin-bottom: 20px;
+        }
+
+        .result-section h4 {
+            margin: 0 0 10px 0;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .category-suggestion, .filename-suggestion {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .category-suggestion:hover, .filename-suggestion:hover {
+            border-color: #2196F3;
+            background: #f8f9ff;
+        }
+
+        .category-name, .filename-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .select-btn {
+            background: #2196F3;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .analysis-details {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .analysis-details h4 {
+            margin: 0 0 12px 0;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .detail-group {
+            margin-bottom: 10px;
+        }
+
+        .detail-label {
+            font-weight: 500;
+            color: #666;
+            font-size: 0.85rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .clickable-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .clickable-item {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .clickable-item:hover {
+            background: #1976d2;
+            color: white;
+        }
+
+        .preview-section {
+            margin-bottom: 20px;
+        }
+
+        .preview-section h4 {
+            margin: 0 0 10px 0;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .preview-container {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            max-height: 300px;
+        }
+
+        .preview-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .ai-action, .manual-actions {
+            margin-top: auto;
+            padding-top: 20px;
+        }
+
+        .btn-ai-primary {
+            background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+
+        .btn-ai-primary:hover {
+            background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+            transform: translateY(-2px);
+        }
+
+        .btn-manual-primary {
+            background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+
+        .btn-manual-primary:hover {
+            background: linear-gradient(135deg, #ef6c00 0%, #e65100 100%);
+            transform: translateY(-2px);
+        }
+
+        .category-dropdown, .path-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+
+        .filename-option-simple {
+            margin-bottom: 8px;
+        }
+
+        .filename-option-simple label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: background 0.2s ease;
+        }
+
+        .filename-option-simple label:hover {
+            background: #f5f5f5;
+        }
+
+        .filename-option-simple input[type="radio"] {
+            margin: 0;
+        }
+
         .suggested-path-section {
             margin: 20px 0;
             padding: 15px;
@@ -740,8 +1502,11 @@
             <h1>📄 Document Sorter</h1>
             <p>KI-gestützte Dokumentensortierung mit DeepSeek R3</p>
             <div style="margin-top: 20px;">
-                <a href="/path-management" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 25px; text-decoration: none; transition: all 0.3s ease;">
+                <a href="/path-management" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 25px; text-decoration: none; transition: all 0.3s ease; margin: 0 10px;">
                     🔗 Pfad-Management
+                </a>
+                <a href="/math" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 25px; text-decoration: none; transition: all 0.3s ease; margin: 0 10px;">
+                    🌟 Kleines 1x1 Lernen
                 </a>
             </div>
         </div>
@@ -759,11 +1524,24 @@
                 </div>
             </div>
             
-            <div class="document-view">
+            <div class="intelligent-column">
+                <div class="column-header">
+                    <span>🤖</span>
+                    <span>Intelligent</span>
+                </div>
                 <div id="status-container"></div>
-                
-                <div id="document-content">
-                    <div class="loading">Wähle eine Datei aus der Liste</div>
+                <div id="intelligent-content">
+                    <div class="loading">Wählen Sie eine Datei aus der Liste</div>
+                </div>
+            </div>
+
+            <div class="manual-column">
+                <div class="column-header">
+                    <span>👤</span>
+                    <span>Manuell</span>
+                </div>
+                <div id="manual-content">
+                    <div class="loading">Wählen Sie eine Datei aus der Liste</div>
                 </div>
             </div>
         </div>
@@ -821,7 +1599,9 @@
             event.target.closest('.file-item').classList.add('active');
 
             // Loading-Anzeige
-            document.getElementById('document-content').innerHTML =
+            document.getElementById('intelligent-content').innerHTML =
+                '<div class="loading">Verarbeite Dokument...</div>';
+            document.getElementById('manual-content').innerHTML =
                 '<div class="loading">Verarbeite Dokument...</div>';
 
             try {
@@ -848,8 +1628,8 @@
 
                 if (data && data.preview) {
                     currentDocument = data;
-                    console.log('Calling displayDocument with:', data, name);
-                    displayDocument(data, name);
+                    console.log('Calling displayNewWorkflow with:', data, name);
+                    displayNewWorkflow(data, name);
                 } else {
                     console.error('Invalid response data:', data);
                     showStatus('Ungültige API-Antwort: Fehlende Daten', 'error');
@@ -859,8 +1639,178 @@
                 showStatus(`Fehler bei der Dokumentenverarbeitung: ${error.message}`, 'error');
             }
         }
-        
-        // Dokument anzeigen
+
+        // New 3-column workflow display
+        function displayNewWorkflow(data, filename) {
+            try {
+                console.log('displayNewWorkflow called with:', data, filename);
+
+                if (!data || !data.preview) {
+                    console.error('Missing required data fields:', data);
+                    showStatus('Fehler: Unvollständige Dokumentdaten', 'error');
+                    return;
+                }
+
+                if (!window.appCategories || window.appCategories.length === 0) {
+                    console.error('Categories not loaded yet');
+                    showStatus('Fehler: Kategorien nicht geladen', 'error');
+                    return;
+                }
+
+                const suggestedCategory = data.suggested_category || window.appCategories[0];
+                console.log('Using suggested category:', suggestedCategory);
+
+                // Create Intelligent Column Content
+                const intelligentContent = createIntelligentContent(data, filename);
+                document.getElementById('intelligent-content').innerHTML = intelligentContent;
+
+                // Create Manual Column Content
+                const manualContent = createManualContent(data, filename, suggestedCategory);
+                document.getElementById('manual-content').innerHTML = manualContent;
+
+                // Set AI indicator based on confidence
+                setAIIndicator(data);
+
+                // Setup event listeners
+                setupNewWorkflowEvents();
+
+                console.log('displayNewWorkflow completed successfully');
+            } catch (error) {
+                console.error('Error in displayNewWorkflow:', error);
+                showStatus(`Fehler beim Anzeigen des Dokuments: ${error.message}`, 'error');
+            }
+        }
+
+        function createIntelligentContent(data, filename) {
+            return `
+                <div class="ai-analysis">
+                    <div class="ai-header">
+                        <h3>🧠 KI-Analyse</h3>
+                        <div class="ai-confidence ${data.confidence === 'high' ? 'high' : 'medium'}">
+                            ${data.confidence === 'high' ? '✅ Hohe Sicherheit' : '⚠️ Mittlere Sicherheit'}
+                        </div>
+                    </div>
+
+                    <div class="ai-results">
+                        <div class="result-section">
+                            <h4>📂 Vorgeschlagene Kategorie</h4>
+                            <div class="category-suggestion" onclick="selectAICategory('${data.suggested_category}')">
+                                <span class="category-name">${data.suggested_category}</span>
+                                <span class="select-btn">✓ Übernehmen</span>
+                            </div>
+                        </div>
+
+                        ${data.filename_suggestion ? `
+                        <div class="result-section">
+                            <h4>📄 Vorgeschlagener Dateiname</h4>
+                            <div class="filename-suggestion" onclick="selectAIFilename()">
+                                <span class="filename-name">${data.filename_suggestion.suggested_filename}</span>
+                                <span class="select-btn">✓ Übernehmen</span>
+                            </div>
+                        </div>
+
+                        <div class="analysis-details">
+                            <h4>🔍 Gefundene Details</h4>
+                            ${data.filename_suggestion.extracted_dates && data.filename_suggestion.extracted_dates.length > 0 ? `
+                            <div class="detail-group">
+                                <span class="detail-label">📅 Gefundene Daten:</span>
+                                <div class="clickable-items">
+                                    ${data.filename_suggestion.extracted_dates.map(date =>
+                                        `<span class="clickable-item" onclick="useDate('${date}')">${date}</span>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            ${data.filename_suggestion.extracted_title ? `
+                            <div class="detail-group">
+                                <span class="detail-label">📄 Extrahierter Titel:</span>
+                                <span class="clickable-item" onclick="useTitle('${data.filename_suggestion.extracted_title}')">${data.filename_suggestion.extracted_title}</span>
+                            </div>
+                            ` : ''}
+
+                            ${data.filename_suggestion.subject_keywords && data.filename_suggestion.subject_keywords.length > 0 ? `
+                            <div class="detail-group">
+                                <span class="detail-label">🏷️ Erkannte Kategorien:</span>
+                                <span class="detail-value">${data.filename_suggestion.subject_keywords.join(', ')}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="preview-section">
+                        <h4>👁️ Dokument-Vorschau</h4>
+                        <div class="preview-container">
+                            <img src="${data.preview}" alt="PDF Preview" class="preview-image">
+                        </div>
+                    </div>
+
+                    <div class="ai-action">
+                        <button class="btn btn-ai-primary" onclick="executeAIWorkflow()">
+                            ⚡ KI-Vorschlag übernehmen
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createManualContent(data, filename, suggestedCategory) {
+            return `
+                <div class="manual-workflow">
+                    <div class="manual-header">
+                        <h3>👤 Manuelle Auswahl</h3>
+                    </div>
+
+                    <div class="category-selection">
+                        <h4>📂 Kategorie wählen</h4>
+                        <select id="manual-category-select" class="category-dropdown">
+                            ${window.appCategories.map(category =>
+                                `<option value="${category}" ${category === suggestedCategory ? 'selected' : ''}>${category}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+
+                    <div class="path-selection">
+                        <h4>📁 Pfad wählen</h4>
+                        <input type="text" id="manual-path-input" class="path-input"
+                               value="${data.suggested_path || ''}" placeholder="Zielpfad eingeben">
+
+                        <div class="path-browser" id="manual-path-browser">
+                            <div class="path-browser-header" onclick="toggleManualPathBrowser()">
+                                📁 Verfügbare Pfade durchsuchen
+                                <span class="collapse-icon">▼</span>
+                            </div>
+                            <div id="manual-directory-list" style="display: none;">Lade Verzeichnisstruktur...</div>
+                        </div>
+                    </div>
+
+                    <div class="filename-selection">
+                        <h4>📝 Dateiname</h4>
+                        <div class="filename-options-simple">
+                            <div class="filename-option-simple">
+                                <input type="radio" id="manual-original" name="manual-filename" value="original" checked>
+                                <label for="manual-original">📄 Original: ${filename}</label>
+                            </div>
+                            ${data.filename_suggestion ? `
+                            <div class="filename-option-simple">
+                                <input type="radio" id="manual-smart" name="manual-filename" value="smart">
+                                <label for="manual-smart">✨ Intelligent: ${data.filename_suggestion.suggested_filename}</label>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <div class="manual-actions">
+                        <button class="btn btn-manual-primary" onclick="executeManualWorkflow()">
+                            📁 Manuell verschieben
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Dokument anzeigen (Legacy)
         function displayDocument(data, filename) {
             try {
                 console.log('displayDocument called with:', data, filename);
@@ -881,77 +1831,173 @@
                 console.log('Using suggested category:', suggestedCategory);
 
                 const content = `
-                    <!-- Suggested Path Section - Full Width at Top -->
-                    <div class="suggested-path-section-top">
-                        <h4>📋 Vorgeschlagener Pfad <span id="ai-indicator" class="ai-indicator"></span></h4>
-                        <div class="suggested-path-display-top">
-                            <input type="text" id="suggested-path-input" class="suggested-path-input-top" value="${data.suggested_path || ''}" readonly>
-                        </div>
-                    </div>
+                    <!-- Document Processing Workflow -->
+                    <div class="processing-workflow">
 
-                    <!-- Filename Information Section -->
-                    ${data.filename_suggestion ? `
-                    <div class="filename-info-section">
-                        <h4>📝 Dateiname-Informationen</h4>
-                        <div class="filename-details">
-                            <div class="filename-row">
-                                <strong>Original:</strong> <span class="filename-original">${data.filename_suggestion.original_filename}</span>
-                            </div>
-                            <div class="filename-row">
-                                <strong>Vorschlag:</strong> <span class="filename-suggested">${data.filename_suggestion.suggested_filename}</span>
-                            </div>
-                            ${data.filename_suggestion.extracted_dates && data.filename_suggestion.extracted_dates.length > 0 ? `
-                            <div class="filename-row">
-                                <strong>Gefundene Daten:</strong> <span class="filename-dates">${data.filename_suggestion.extracted_dates.join(', ')}</span>
-                            </div>
-                            ` : ''}
-                            ${data.filename_suggestion.selected_date ? `
-                            <div class="filename-row">
-                                <strong>Verwendetes Datum:</strong> <span class="filename-selected-date">${data.filename_suggestion.selected_date}</span>
-                                <span class="date-source-badge">${data.filename_suggestion.date_source === 'content' ? '📄 Aus Inhalt' : '📅 Fallback'}</span>
-                            </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                    ` : ''}
-
-                    <div class="document-preview">
-                        <div>
-                            <img src="${data.preview}" alt="PDF Preview" class="preview-image">
-                        </div>
-
-                        <div class="classification-panel">
-                            <h3>📂 Klassifizierung</h3>
-
-                            <div class="global-search-container">
-                                <label for="global-path-search">🔍 Globale Pfadsuche:</label>
-                                <input type="text" id="global-path-search" class="path-search-input" placeholder="Suche in allen Verzeichnissen (z.B. 'Lesekram')">
-                                <div id="global-autocomplete-dropdown" class="autocomplete-dropdown"></div>
+                        <!-- Step 1: Path Selection -->
+                        <div class="workflow-step" id="step-1">
+                            <div class="step-header">
+                                <span class="step-number">1</span>
+                                <h3>📁 Zielpfad festlegen</h3>
+                                <span id="ai-indicator" class="ai-indicator"></span>
                             </div>
 
-                            <label for="category-select">Kategorie:</label>
-                            <select id="category-select" class="category-select" onchange="updatePath()">
-                                ${window.appCategories.map(cat =>
-                                    `<option value="${cat}" ${cat === suggestedCategory ? 'selected' : ''}>${cat}</option>`
-                                ).join('')}
-                            </select>
-
-                            <div class="path-browser" id="path-browser">
-                                <div class="path-browser-header" onclick="togglePathBrowser()">
-                                    📁 Verfügbare Pfade
-                                    <span class="collapse-icon">▼</span>
+                            <div class="path-selection-section">
+                                <div class="suggested-path-display">
+                                    <label for="suggested-path-input">Vorgeschlagener Pfad:</label>
+                                    <div class="path-input-container">
+                                        <input type="text" id="suggested-path-input" class="path-input" value="${data.suggested_path || ''}" readonly>
+                                        <button class="btn btn-icon" onclick="copyToClipboard('suggested-path-input')" title="Pfad kopieren">📋</button>
+                                    </div>
                                 </div>
-                                <div id="directory-list">Lade Verzeichnisstruktur...</div>
+
+                                ${data.suggested_subdirectory ? `
+                                <div class="ai-suggestions-display">
+                                    <label>🤖 KI-Vorschläge:</label>
+                                    <div class="ai-suggestion-chips">
+                                        <span class="ai-chip category-chip">${data.suggested_category}</span>
+                                        <span class="ai-chip subdirectory-chip">${data.suggested_subdirectory}</span>
+                                    </div>
+                                </div>
+                                ` : ''}
+
+                                <div class="path-customization">
+                                    <div class="category-selection">
+                                        <label for="category-select">Kategorie auswählen:</label>
+                                        <select id="category-select" class="category-select" onchange="updatePath()">
+                                            ${window.appCategories.map(cat =>
+                                                `<option value="${cat}" ${cat === suggestedCategory ? 'selected' : ''}>${cat}</option>`
+                                            ).join('')}
+                                        </select>
+                                    </div>
+
+                                    <div class="global-search-container">
+                                        <label for="global-path-search">🔍 Pfad suchen:</label>
+                                        <input type="text" id="global-path-search" class="path-search-input" placeholder="Suche in allen Verzeichnissen (z.B. 'Lesekram')">
+                                        <div id="global-autocomplete-dropdown" class="autocomplete-dropdown"></div>
+                                    </div>
+                                </div>
+
+                                <div class="path-browser" id="path-browser">
+                                    <div class="path-browser-header" onclick="togglePathBrowser()">
+                                        📁 Verfügbare Pfade durchsuchen
+                                        <span class="collapse-icon">▼</span>
+                                    </div>
+                                    <div id="directory-list">Lade Verzeichnisstruktur...</div>
+                                </div>
+
+                                <div id="smart-suggestions" style="display: none;">
+                                    <h4>🎯 Intelligente Pfadvorschläge</h4>
+                                    <div id="suggestion-list"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Filename Configuration -->
+                        <div class="workflow-step" id="step-2">
+                            <div class="step-header">
+                                <span class="step-number">2</span>
+                                <h3>📝 Dateiname konfigurieren</h3>
                             </div>
 
-                            <div id="smart-suggestions" style="display: none; margin-bottom: 15px;">
-                                <h4 style="color: #667eea; margin-bottom: 10px;">🎯 Intelligente Pfadvorschläge</h4>
-                                <div id="suggestion-list"></div>
+                            <div class="filename-configuration compact">
+                                <div class="filename-options">
+                                    <div class="filename-option" onclick="selectFilenameOption('original')">
+                                        <input type="radio" id="keep-original" name="filename-mode" value="original" checked>
+                                        <label for="keep-original">
+                                            <strong>📄 Original</strong>
+                                            <div class="filename-preview">${data.filename_suggestion ? data.filename_suggestion.original_filename : filename}</div>
+                                        </label>
+                                    </div>
+
+                                    ${data.filename_suggestion && data.filename_suggestion.selected_date ? `
+                                    <div class="filename-option" onclick="selectFilenameOption('date')">
+                                        <input type="radio" id="use-date" name="filename-mode" value="date">
+                                        <label for="use-date">
+                                            <strong>📅 Mit Datum</strong>
+                                            <div class="filename-preview">${data.filename_suggestion.selected_date + '_' + data.filename_suggestion.original_filename.replace(/^\\d{4}-\\d{2}-\\d{2}_?/, '')}</div>
+                                            <span class="option-badge">${data.filename_suggestion.date_source === 'content' ? 'Aus PDF' : 'Fallback'}</span>
+                                        </label>
+                                    </div>
+                                    ` : ''}
+
+                                    ${data.filename_suggestion ? `
+                                    <div class="filename-option" onclick="selectFilenameOption('smart')">
+                                        <input type="radio" id="use-smart" name="filename-mode" value="smart">
+                                        <label for="use-smart">
+                                            <strong>✨ Intelligent</strong>
+                                            <div class="filename-preview">${data.filename_suggestion.suggested_filename}</div>
+                                            <span class="option-badge">${data.filename_suggestion.title_source === 'pdf_content' ? 'PDF-Titel' : 'Fallback'}</span>
+                                        </label>
+                                    </div>
+                                    ` : ''}
+                                </div>
+
+                                ${data.filename_suggestion ? `
+                                <div class="intelligent-details" id="intelligent-details">
+                                    <div class="details-header" onclick="toggleIntelligentDetails()">
+                                        <span>🔍 Intelligente Analyse-Details</span>
+                                        <span class="toggle-icon">▼</span>
+                                    </div>
+                                    <div class="details-content" style="display: none;">
+                                        ${data.filename_suggestion.extracted_title ? `
+                                        <div class="detail-item">
+                                            <span class="detail-icon">📄</span>
+                                            <span class="detail-label">Extrahierter Titel:</span>
+                                            <span class="detail-value clickable-value" onclick="useExtractedTitle('${data.filename_suggestion.extracted_title}')">${data.filename_suggestion.extracted_title}</span>
+                                        </div>
+                                        ` : ''}
+                                        ${data.filename_suggestion.extracted_dates && data.filename_suggestion.extracted_dates.length > 0 ? `
+                                        <div class="detail-item">
+                                            <span class="detail-icon">📅</span>
+                                            <span class="detail-label">Gefundene Daten:</span>
+                                            <span class="detail-value">${data.filename_suggestion.extracted_dates.map(date => `<span class="clickable-date" onclick="useExtractedDate('${date}')">${date}</span>`).join(', ')}</span>
+                                        </div>
+                                        ` : ''}
+                                        ${data.filename_suggestion.selected_date ? `
+                                        <div class="detail-item">
+                                            <span class="detail-icon">✅</span>
+                                            <span class="detail-label">Verwendetes Datum:</span>
+                                            <span class="detail-value clickable-date" onclick="useExtractedDate('${data.filename_suggestion.selected_date}')">${data.filename_suggestion.selected_date}</span>
+                                        </div>
+                                        ` : ''}
+                                        ${data.filename_suggestion.subject_keywords && data.filename_suggestion.subject_keywords.length > 0 ? `
+                                        <div class="detail-item">
+                                            <span class="detail-icon">🏷️</span>
+                                            <span class="detail-label">Erkannte Kategorien:</span>
+                                            <span class="detail-value">${data.filename_suggestion.subject_keywords.join(', ')}</span>
+                                        </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Final Actions -->
+                        <div class="workflow-step" id="step-3">
+                            <div class="step-header">
+                                <span class="step-number">3</span>
+                                <h3>🚀 Aktionen ausführen</h3>
+                            </div>
+
+                            <div class="final-summary">
+                                <div class="summary-row">
+                                    <span class="summary-label">Zielpfad:</span>
+                                    <span class="summary-value" id="final-path">${data.suggested_path || ''}</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span class="summary-label">Dateiname:</span>
+                                    <span class="summary-value" id="final-filename">${data.filename_suggestion ? data.filename_suggestion.original_filename : filename}</span>
+                                </div>
                             </div>
 
                             <div class="action-buttons">
                                 <button class="btn btn-primary" onclick="executeMove()">
-                                    ✅ Verschieben
+                                    📁 Nur verschieben
+                                </button>
+                                <button class="btn btn-success" onclick="executeMoveAndRename()">
+                                    ✨ Umbenennen & verschieben
                                 </button>
                                 <button class="btn btn-secondary" onclick="updatePath()">
                                     🔄 Pfad aktualisieren
@@ -960,6 +2006,12 @@
                                     ↶ Rückgängig
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="document-preview">
+                        <div class="preview-container">
+                            <img src="${data.preview}" alt="PDF Preview" class="preview-image">
                         </div>
                     </div>
                 `;
@@ -987,6 +2039,15 @@
 
                 // Event-Listener für globale Pfadsuche
                 setupGlobalPathSearch();
+
+                // Setup new filename toggle functionality
+                setupFilenameToggle();
+
+                // Setup intelligent details toggle
+                setupIntelligentDetailsToggle();
+
+                // Update final summary initially
+                updateFinalSummary();
 
                 // Initial: Verfügbare Pfade basierend auf Kategorie aktualisieren
                 updateAvailablePaths();
@@ -1101,7 +2162,9 @@
                     // Dateiliste neu laden
                     setTimeout(() => {
                         loadFiles();
-                        document.getElementById('document-content').innerHTML =
+                        document.getElementById('intelligent-content').innerHTML =
+                            '<div class="loading">Wähle eine neue Datei aus der Liste</div>';
+                        document.getElementById('manual-content').innerHTML =
                             '<div class="loading">Wähle eine neue Datei aus der Liste</div>';
                     }, 2000);
                 } else {
@@ -1698,7 +2761,9 @@
                     // Dateiliste neu laden
                     setTimeout(() => {
                         loadFiles();
-                        document.getElementById('document-content').innerHTML =
+                        document.getElementById('intelligent-content').innerHTML =
+                            '<div class="loading">Wähle eine neue Datei aus der Liste</div>';
+                        document.getElementById('manual-content').innerHTML =
                             '<div class="loading">Wähle eine neue Datei aus der Liste</div>';
                     }, 2000);
                 } else {
@@ -1822,6 +2887,451 @@
         }
 
 
+
+        // New Functions for Enhanced UI
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                navigator.clipboard.writeText(element.value || element.textContent);
+                showStatus('Text kopiert!', 'success');
+            }
+        }
+
+        function setupFilenameToggle() {
+            const radios = document.querySelectorAll('input[name="filename-mode"]');
+            const finalFilename = document.getElementById('final-filename');
+
+            // Setup visual selection for filename options
+            document.querySelectorAll('.filename-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const radio = this.querySelector('input[type="radio"]');
+                    if (radio) {
+                        radio.checked = true;
+
+                        // Update visual selection
+                        document.querySelectorAll('.filename-option').forEach(opt => opt.classList.remove('selected'));
+                        this.classList.add('selected');
+
+                        updateFinalSummary();
+                    }
+                });
+            });
+
+            radios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    // Update visual selection
+                    document.querySelectorAll('.filename-option').forEach(opt => opt.classList.remove('selected'));
+                    this.closest('.filename-option').classList.add('selected');
+
+                    updateFinalSummary();
+                });
+            });
+
+            // Set initial selection
+            const checkedRadio = document.querySelector('input[name="filename-mode"]:checked');
+            if (checkedRadio) {
+                checkedRadio.closest('.filename-option').classList.add('selected');
+            }
+        }
+
+        function updateFinalSummary() {
+            const finalPath = document.getElementById('final-path');
+            const finalFilename = document.getElementById('final-filename');
+            const suggestedPath = document.getElementById('suggested-path-input');
+
+            if (finalPath && suggestedPath) {
+                finalPath.textContent = suggestedPath.value;
+            }
+
+            // Update filename based on selection
+            const selectedMode = document.querySelector('input[name="filename-mode"]:checked');
+            if (selectedMode && finalFilename && currentDocument) {
+                if (selectedMode.value === 'smart' && currentDocument.filename_suggestion) {
+                    finalFilename.textContent = currentDocument.filename_suggestion.suggested_filename;
+                } else if (selectedMode.value === 'date' && currentDocument.filename_suggestion && currentDocument.filename_suggestion.selected_date) {
+                    const originalName = currentDocument.filename_suggestion.original_filename.replace(/^\d{4}-\d{2}-\d{2}_?/, '');
+                    finalFilename.textContent = currentDocument.filename_suggestion.selected_date + '_' + originalName;
+                } else if (currentDocument.filename_suggestion) {
+                    finalFilename.textContent = currentDocument.filename_suggestion.original_filename;
+                }
+            }
+        }
+
+        async function executeMoveAndRename() {
+            console.log('executeMoveAndRename called');
+            if (!currentDocument) {
+                showStatus('Kein Dokument ausgewählt', 'error');
+                console.log('No document selected');
+                return;
+            }
+
+            const selectedMode = document.querySelector('input[name="filename-mode"]:checked');
+            const targetPath = document.getElementById('suggested-path-input').value;
+
+            console.log('Selected mode:', selectedMode?.value);
+            console.log('Target path:', targetPath);
+            console.log('Current document:', currentDocument);
+            console.log('Has filename_suggestion:', !!currentDocument.filename_suggestion);
+
+            if (!targetPath || targetPath.trim() === '') {
+                showStatus('Kein Zielpfad angegeben', 'error');
+                console.log('No target path provided');
+                return;
+            }
+
+            let filename;
+            if (selectedMode && selectedMode.value === 'smart' && currentDocument.filename_suggestion) {
+                filename = currentDocument.filename_suggestion.suggested_filename;
+                console.log('Using smart filename:', filename);
+            } else if (selectedMode && selectedMode.value === 'date' && currentDocument.filename_suggestion && currentDocument.filename_suggestion.selected_date) {
+                const originalName = currentDocument.filename_suggestion.original_filename.replace(/^\d{4}-\d{2}-\d{2}_?/, '');
+                filename = currentDocument.filename_suggestion.selected_date + '_' + originalName;
+                console.log('Using date filename:', filename);
+            } else if (currentDocument.filename_suggestion) {
+                filename = currentDocument.filename_suggestion.original_filename;
+                console.log('Using original filename from suggestion:', filename);
+            } else {
+                filename = currentDocument.original_path.split('/').pop();
+                console.log('Using filename from path:', filename);
+            }
+
+            // Ensure proper path construction
+            const cleanTargetPath = targetPath.replace(/\/+$/, ''); // Remove trailing slashes
+            const fullTargetPath = cleanTargetPath + '/' + filename;
+
+            console.log('Final filename:', filename);
+            console.log('Clean target path:', cleanTargetPath);
+            console.log('Full target path:', fullTargetPath);
+
+            try {
+                showStatus('Dokument wird umbenannt und verschoben...', 'info');
+
+                const requestData = {
+                    source_path: currentDocument.original_path,
+                    target_path: fullTargetPath
+                };
+
+                console.log('Sending move request:', requestData);
+
+                const response = await fetch('/api/move-document', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                console.log('Response status:', response.status);
+                const result = await response.json();
+                console.log('Response data:', result);
+
+                if (result.success) {
+                    showStatus(`✨ Dokument erfolgreich umbenannt und verschoben nach: ${result.target_path}`, 'success');
+
+                    // Update undo functionality
+                    lastAction = {
+                        type: 'move_and_rename',
+                        source: currentDocument.original_path,
+                        target: result.target_path,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    document.getElementById('undo-btn').disabled = false;
+
+                    // Refresh file list
+                    await loadFiles();
+
+                    // Clear current document
+                    document.getElementById('intelligent-content').innerHTML =
+                        '<div class="loading">Wählen Sie eine PDF-Datei aus der Liste aus</div>';
+                    document.getElementById('manual-content').innerHTML =
+                        '<div class="loading">Wählen Sie eine PDF-Datei aus der Liste aus</div>';
+                    currentDocument = null;
+                } else {
+                    showStatus(`Fehler beim Verschieben: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error during move and rename:', error);
+                showStatus('Fehler beim Umbenennen und Verschieben', 'error');
+            }
+        }
+
+        // New functions for compact layout and clickable options
+        function selectFilenameOption(option) {
+            const radio = document.getElementById(option === 'original' ? 'keep-original' : option === 'date' ? 'use-date' : 'use-smart');
+            if (radio) {
+                radio.checked = true;
+
+                // Update visual selection
+                document.querySelectorAll('.filename-option').forEach(opt => opt.classList.remove('selected'));
+                radio.closest('.filename-option').classList.add('selected');
+
+                updateFinalSummary();
+            }
+        }
+
+        function toggleIntelligentDetails() {
+            const content = document.querySelector('.details-content');
+            const icon = document.querySelector('.toggle-icon');
+
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.classList.add('rotated');
+            } else {
+                content.style.display = 'none';
+                icon.classList.remove('rotated');
+            }
+        }
+
+        function setupIntelligentDetailsToggle() {
+            // Setup is done in HTML, function exists for consistency
+        }
+
+        function useExtractedDate(date) {
+            if (!currentDocument || !currentDocument.filename_suggestion) return;
+
+            // Create a new filename with the clicked date
+            const originalName = currentDocument.filename_suggestion.original_filename.replace(/^\d{4}-\d{2}-\d{2}_?/, '');
+            const newFilename = `${date}_${originalName}`;
+
+            // Update the date option preview
+            const dateOption = document.querySelector('input[name="filename-mode"][value="date"]');
+            if (dateOption) {
+                const preview = dateOption.closest('.filename-option').querySelector('.filename-preview');
+                if (preview) {
+                    preview.textContent = newFilename;
+                }
+
+                // Select the date option
+                selectFilenameOption('date');
+
+                // Update currentDocument with new date
+                currentDocument.filename_suggestion.selected_date = date;
+
+                showStatus(`📅 Datum ${date} ausgewählt`, 'success');
+            }
+        }
+
+        function useExtractedTitle(title) {
+            if (!currentDocument || !currentDocument.filename_suggestion) return;
+
+            // Create a new filename with the clicked title
+            const selectedDate = currentDocument.filename_suggestion.selected_date || new Date().toISOString().split('T')[0];
+            const newFilename = `${selectedDate}_${title}.pdf`;
+
+            // Update the smart option preview
+            const smartOption = document.querySelector('input[name="filename-mode"][value="smart"]');
+            if (smartOption) {
+                const preview = smartOption.closest('.filename-option').querySelector('.filename-preview');
+                if (preview) {
+                    preview.textContent = newFilename;
+                }
+
+                // Select the smart option
+                selectFilenameOption('smart');
+
+                // Update currentDocument with new filename
+                currentDocument.filename_suggestion.suggested_filename = newFilename;
+
+                showStatus(`📄 Titel "${title}" ausgewählt`, 'success');
+            }
+        }
+
+        // New Workflow Functions
+        function setupNewWorkflowEvents() {
+            // Setup manual category change
+            const categorySelect = document.getElementById('manual-category-select');
+            if (categorySelect) {
+                categorySelect.addEventListener('change', updateManualPath);
+            }
+
+            // Setup manual path browser
+            loadDirectoryStructureManual();
+        }
+
+        function selectAICategory(category) {
+            const manualSelect = document.getElementById('manual-category-select');
+            if (manualSelect) {
+                manualSelect.value = category;
+                updateManualPath();
+            }
+            showStatus(`📂 Kategorie "${category}" übernommen`, 'success');
+        }
+
+        function selectAIFilename() {
+            if (currentDocument && currentDocument.filename_suggestion) {
+                // Update manual radio to smart
+                const smartRadio = document.getElementById('manual-smart');
+                if (smartRadio) {
+                    smartRadio.checked = true;
+                }
+                showStatus(`📄 KI-Dateiname übernommen`, 'success');
+            }
+        }
+
+        function useDate(date) {
+            if (currentDocument && currentDocument.filename_suggestion) {
+                currentDocument.filename_suggestion.selected_date = date;
+
+                // Update filename display
+                const cleanName = currentDocument.filename_suggestion.original_filename.replace(/^\d{4}-\d{2}-\d{2}_?/, '');
+                const newFilename = `${date}_${cleanName}`;
+
+                // Update manual smart option if it exists
+                const smartLabel = document.querySelector('label[for="manual-smart"]');
+                if (smartLabel) {
+                    smartLabel.innerHTML = `✨ Intelligent: ${newFilename}`;
+                }
+
+                currentDocument.filename_suggestion.suggested_filename = newFilename;
+                showStatus(`📅 Datum ${date} für Dateiname verwendet`, 'success');
+            }
+        }
+
+        function useTitle(title) {
+            if (currentDocument && currentDocument.filename_suggestion) {
+                const date = currentDocument.filename_suggestion.selected_date || new Date().toISOString().split('T')[0];
+                const newFilename = `${date}_${title}.pdf`;
+
+                // Update manual smart option if it exists
+                const smartLabel = document.querySelector('label[for="manual-smart"]');
+                if (smartLabel) {
+                    smartLabel.innerHTML = `✨ Intelligent: ${newFilename}`;
+                }
+
+                currentDocument.filename_suggestion.suggested_filename = newFilename;
+                showStatus(`📄 Titel "${title}" für Dateiname verwendet`, 'success');
+            }
+        }
+
+        function updateManualPath() {
+            const categorySelect = document.getElementById('manual-category-select');
+            const pathInput = document.getElementById('manual-path-input');
+
+            if (categorySelect && pathInput && currentDocument) {
+                const selectedCategory = categorySelect.value;
+                const sortedDir = currentDocument.suggested_path.split('/').slice(0, -2).join('/');
+                const newPath = `${sortedDir}/${selectedCategory}`;
+                pathInput.value = newPath;
+            }
+        }
+
+        function executeAIWorkflow() {
+            if (!currentDocument) {
+                showStatus('Kein Dokument ausgewählt', 'error');
+                return;
+            }
+
+            const sourcePath = currentDocument.original_path;
+            const filename = currentDocument.filename_suggestion ?
+                currentDocument.filename_suggestion.suggested_filename :
+                currentDocument.original_path.split('/').pop();
+
+            const category = currentDocument.suggested_category;
+            const sortedDir = currentDocument.suggested_path.split('/').slice(0, -2).join('/');
+            const targetPath = `${sortedDir}/${category}/${filename}`;
+
+            executeMove(sourcePath, targetPath, 'KI-Workflow');
+        }
+
+        function executeManualWorkflow() {
+            if (!currentDocument) {
+                showStatus('Kein Dokument ausgewählt', 'error');
+                return;
+            }
+
+            const sourcePath = currentDocument.original_path;
+            const pathInput = document.getElementById('manual-path-input');
+            const filenameRadios = document.querySelectorAll('input[name="manual-filename"]');
+
+            let filename;
+            const selectedRadio = Array.from(filenameRadios).find(radio => radio.checked);
+
+            if (selectedRadio && selectedRadio.value === 'smart' && currentDocument.filename_suggestion) {
+                filename = currentDocument.filename_suggestion.suggested_filename;
+            } else {
+                filename = currentDocument.original_path.split('/').pop();
+            }
+
+            const targetPath = `${pathInput.value}/${filename}`;
+
+            executeMove(sourcePath, targetPath, 'Manueller Workflow');
+        }
+
+        function executeMove(sourcePath, targetPath, workflowType) {
+            showStatus(`${workflowType}: Dokument wird verschoben...`, 'info');
+
+            fetch('/api/move-document', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    source_path: sourcePath,
+                    target_path: targetPath
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showStatus(`✅ ${workflowType}: Erfolgreich nach ${result.target_path}`, 'success');
+
+                    // Refresh and clear
+                    setTimeout(() => {
+                        loadFiles();
+                        document.getElementById('intelligent-content').innerHTML =
+                            '<div class="loading">Wählen Sie eine neue Datei aus der Liste</div>';
+                        document.getElementById('manual-content').innerHTML =
+                            '<div class="loading">Wählen Sie eine neue Datei aus der Liste</div>';
+                        currentDocument = null;
+                    }, 2000);
+                } else {
+                    showStatus(`❌ ${workflowType}: Fehler - ${result.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showStatus(`❌ ${workflowType}: Fehler beim Verschieben`, 'error');
+            });
+        }
+
+        function loadDirectoryStructureManual() {
+            // Simplified version - just show the path input for now
+            // Can be enhanced later with full directory browser
+        }
+
+        function toggleManualPathBrowser() {
+            const list = document.getElementById('manual-directory-list');
+            const icon = document.querySelector('#manual-path-browser .collapse-icon');
+
+            if (list.style.display === 'none') {
+                list.style.display = 'block';
+                icon.textContent = '▲';
+            } else {
+                list.style.display = 'none';
+                icon.textContent = '▼';
+            }
+        }
+
+        function updatePathOnCategoryChange() {
+            const categorySelect = document.getElementById('category-select');
+            const pathInput = document.getElementById('suggested-path-input');
+
+            if (categorySelect && pathInput && currentDocument) {
+                const selectedCategory = categorySelect.value;
+                const basePath = pathInput.value.split('/').slice(0, -1).join('/');
+                const newPath = `${basePath}/${selectedCategory}`;
+                pathInput.value = newPath;
+                updateFinalSummary();
+            }
+        }
+
+        // Enhanced updatePath function
+        function updatePath() {
+            updatePathOnCategoryChange();
+            updateAvailablePaths();
+            updateFinalSummary();
+        }
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeApp);

@@ -73,12 +73,31 @@ An intelligent web application for automatic PDF document sorting with local AI 
 2. **Open web interface:**
    Open http://127.0.0.1:5001 in your browser
 
-3. **Sort documents:**
+3. **Sort documents with new 3-column workflow:**
+
+   ### 📂 Files Column (Left)
    - PDFs are automatically loaded from the scan directory
-   - AI analyzes content and suggests categories
-   - **Intelligent file renaming** with automatic date extraction
-   - Review and confirm suggestions with filename details
-   - Documents are automatically sorted with optimized names
+   - Click on any file to analyze it
+   - Shows file metadata (size, modification date)
+
+   ### 🤖 Intelligent Column (Center)
+   - **AI-powered workflow** with one-click confirmation
+   - Automatic document analysis with confidence scores
+   - **Smart filename suggestions** with date extraction and title recognition
+   - **Clickable options** for dates and filenames
+   - Category predictions with context explanations
+   - **Execute AI Workflow** button for instant processing
+
+   ### ⚙️ Manual Column (Right)
+   - **Traditional category selection** with directory tree
+   - Full control over target location
+   - Custom filename and path editing
+   - Fallback option when AI suggestions need adjustment
+
+   ### Workflow Options
+   - **Intelligent Process**: Use AI suggestions with one-click confirmation
+   - **Manual Override**: Full control over categorization and naming
+   - **Hybrid Approach**: Start with AI suggestions, modify manually if needed
 
 ## Intelligent File Renaming
 
@@ -87,9 +106,11 @@ The application features an advanced file renaming system that automatically gen
 ### Features
 - **📅 Date Extraction**: Automatically detects dates from document content using German date patterns
 - **🧹 Clean Naming**: Removes scanner artifacts (Scanbot, "Gescanntes Dokument", etc.)
-- **📊 Format Standardization**: Creates consistent `YYYY-MM-DD_category_description.pdf` format
+- **📊 Format Standardization**: Creates consistent `YYYY-MM-DD_description.pdf` format (category removed per user request)
 - **🎯 Smart Date Selection**: Chooses the most recent past date from extracted content
+- **🏷️ Flexible Title Extraction**: Intelligent document title recognition from PDF headers and content
 - **💡 Visual Feedback**: Shows original vs suggested filename with extraction details
+- **🖱️ Clickable Options**: Interactive date and filename selection in the intelligent workflow
 
 ### Supported Date Formats
 - `DD.MM.YYYY` and `DD/MM/YYYY` (German standard)
@@ -101,10 +122,13 @@ The application features an advanced file renaming system that automatically gen
 ### Example Transformations
 ```
 Original: "Scanbot_2024_03_15_document.pdf"
-Suggested: "2024-03-15_finanzen_document.pdf"
+Suggested: "2024-03-15_document.pdf"
 
-Original: "Gescanntes Dokument 123.pdf"
-Suggested: "2024-09-21_kategorie_dokument.pdf"
+Original: "Gescanntes Dokument 123.pdf" (with "Kündigung" detected in content)
+Suggested: "2024-09-21_kuendigung.pdf"
+
+Original: "2023-09-23__gescanntes Dokument (2).pdf" (with invoice detected)
+Suggested: "2023-09-23_rechnung.pdf"
 ```
 
 ## Configuration

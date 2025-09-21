@@ -127,19 +127,27 @@ def process_document():
         )
 
         # Generate smart filename suggestion
-        filename_suggestion = file_renaming_service.suggest_filename(filename, text, result['category'])
+        suggested_category = result['category']['category']
+        filename_suggestion = file_renaming_service.suggest_filename(filename, text, suggested_category)
 
-        # Vorgeschlagenen Pfad generieren
-        suggested_path = os.path.join(CONFIG['SORTED_DIR'], result['category'], filename_suggestion['suggested_filename'])
+        # Vorgeschlagenen Pfad generieren mit AI-Unterverzeichnis
+        suggested_subdirectory = result['category'].get('subdirectory', '')
+
+        if suggested_subdirectory:
+            suggested_path = os.path.join(CONFIG['SORTED_DIR'], suggested_category, suggested_subdirectory, filename_suggestion['suggested_filename'])
+        else:
+            suggested_path = os.path.join(CONFIG['SORTED_DIR'], suggested_category, filename_suggestion['suggested_filename'])
 
         logger.info("PDF processing completed successfully",
                    pdf_path=pdf_path,
-                   suggested_category=result['category'],
+                   suggested_category=suggested_category,
+                   suggested_subdirectory=suggested_subdirectory,
                    text_length=len(text))
 
         return jsonify({
             'preview': preview,
-            'suggested_category': result['category'],
+            'suggested_category': suggested_category,
+            'suggested_subdirectory': suggested_subdirectory,
             'suggested_path': suggested_path,
             'original_path': pdf_path,
             'context_hints': result['context_hints'],

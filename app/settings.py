@@ -23,13 +23,11 @@ class Config:
     GLOBAL_BLACKLIST_DIRS = [
         '.SynologyWorkingDirectory',
         '#SynoRecycle',
-        '21_gifs',
         '.DS_Store',
         '__pycache__',
         '.git',
         'node_modules',
         '.localized',
-        'Programmierung',
         'Scanbot',
         'scanbot',
         '0001_scanbot'

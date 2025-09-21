@@ -24,56 +24,83 @@ class DocumentClassifier:
         self.timeout = timeout
         self.prompt_manager = PromptManager()
 
-    def parse_ai_response(self, raw_response: str, available_categories: List[str]) -> str:
+    def parse_ai_response(self, raw_response: str, available_categories: List[str]) -> Dict[str, str]:
         """
-        Parse AI response and extract category name, handling reasoning tokens
+        Parse AI response and extract category and subdirectory
 
         Args:
             raw_response: Raw response from AI model
             available_categories: List of valid categories
 
         Returns:
-            Extracted category name
+            Dictionary with 'category' and 'subdirectory' keys
         """
-        # First try exact match with available categories
-        for category in available_categories:
-            if category in raw_response:
-                return category
+        # Default response structure
+        result = {'category': '', 'subdirectory': ''}
 
         # Handle DeepSeek reasoning tokens - extract content after </think>
+        response_text = raw_response
         if '</think>' in raw_response:
             parts = raw_response.split('</think>')
             if len(parts) > 1:
-                final_answer = parts[-1].strip()
-                # Check if final answer contains any category
-                for category in available_categories:
-                    if category in final_answer:
-                        return category
-                # If no category found, return the cleaned final answer
-                return final_answer
+                response_text = parts[-1].strip()
 
-        # Handle other reasoning patterns
-        lines = raw_response.split('\n')
+        # Clean the response
+        response_text = response_text.replace('<think>', '').replace('</think>', '').strip()
+
+        # Look for the new format: CATEGORY|SUBDIRECTORY
+        if '|' in response_text:
+            lines = response_text.split('\n')
+            for line in lines:
+                line = line.strip()
+                if '|' in line and not line.startswith('<') and not line.startswith('Okay') and not line.startswith('Ich'):
+                    parts = line.split('|', 1)  # Split only on first |
+                    if len(parts) == 2:
+                        category_part = parts[0].strip()
+                        subdirectory_part = parts[1].strip()
+
+                        # Validate category
+                        for category in available_categories:
+                            if category == category_part or category in category_part:
+                                result['category'] = category
+                                result['subdirectory'] = subdirectory_part
+                                return result
+
+                        # If no exact match, try partial match
+                        for category in available_categories:
+                            if category.lower() in category_part.lower():
+                                result['category'] = category
+                                result['subdirectory'] = subdirectory_part
+                                return result
+
+        # Fallback: try to find just the category (legacy format)
+        for category in available_categories:
+            if category in response_text:
+                result['category'] = category
+                return result
+
+        # Final fallback: analyze lines for category names
+        lines = response_text.split('\n')
         for line in lines:
             line = line.strip()
             if line and not line.startswith('<') and not line.startswith('Okay') and not line.startswith('Ich'):
                 for category in available_categories:
                     if category in line:
-                        return category
-                # If this line looks like a clean category answer, return it
+                        result['category'] = category
+                        return result
+                # If this line looks like a clean category answer, use it
                 if len(line) < 50 and not line.endswith('?'):
-                    return line
+                    result['category'] = line
+                    return result
 
-        # Fallback: return the cleaned raw response
-        cleaned = raw_response.replace('<think>', '').replace('</think>', '').strip()
-        lines = cleaned.split('\n')
-        if lines:
-            return lines[-1].strip()
+        # Last resort: return first available category
+        if available_categories:
+            result['category'] = available_categories[0]
 
-        return raw_response.strip()
+        return result
 
     def classify_document(self, text: str, filename: str, available_categories: List[str],
-                         category_info: str) -> str:
+                         category_info: str) -> Dict[str, str]:
         """
         Classify document using AI model
 
@@ -84,7 +111,7 @@ class DocumentClassifier:
             category_info: Formatted category information
 
         Returns:
-            Classified category name
+            Dictionary with 'category' and 'subdirectory' keys
         """
         try:
             # Build classification prompt
@@ -113,25 +140,34 @@ class DocumentClassifier:
                 result = response.json()
                 raw_response = result['choices'][0]['message']['content'].strip()
 
-                # Parse response and extract category
-                category = self.parse_ai_response(raw_response, available_categories)
+                # Parse response and extract category + subdirectory
+                classification_result = self.parse_ai_response(raw_response, available_categories)
 
-                if category in available_categories:
-                    return category
+                if classification_result['category'] in available_categories:
+                    return classification_result
                 else:
                     # Return first available category as fallback
-                    return available_categories[0] if available_categories else 'Sonstiges'
+                    return {
+                        'category': available_categories[0] if available_categories else 'Sonstiges',
+                        'subdirectory': ''
+                    }
 
             else:
                 print(f"LM Studio API error: {response.status_code} - {response.text}")
-                return available_categories[0] if available_categories else 'Sonstiges'
+                return {
+                    'category': available_categories[0] if available_categories else 'Sonstiges',
+                    'subdirectory': ''
+                }
 
         except Exception as e:
             print(f"Error calling LM Studio: {e}")
             # Smart fallback based on filename and text analysis
             fallback_category = self._smart_fallback_classification(text, filename, available_categories)
             print(f"Using smart fallback classification: {fallback_category}")
-            return fallback_category
+            return {
+                'category': fallback_category,
+                'subdirectory': ''
+            }
 
     def _smart_fallback_classification(self, text: str, filename: str, available_categories: List[str]) -> str:
         """
@@ -196,16 +232,16 @@ class DocumentClassifier:
         context_hints = self.prompt_manager.extract_document_context(text, filename)
 
         # Classify document
-        category = self.classify_document(text, filename, available_categories, category_info)
+        classification_result = self.classify_document(text, filename, available_categories, category_info)
 
         # Return detailed analysis
         return {
-            'category': category,
+            'category': classification_result,
             'context_hints': context_hints,
             'text_length': len(text),
             'filename': filename,
-            'confidence': 'high' if category in available_categories else 'low',
-            'fallback_used': category not in available_categories
+            'confidence': 'high' if classification_result['category'] in available_categories else 'low',
+            'fallback_used': classification_result['category'] not in available_categories
         }
 
     def test_connection(self) -> Dict[str, Any]:

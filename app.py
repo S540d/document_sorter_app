@@ -11,6 +11,7 @@ from app.pdf import PDFProcessor, PDFPreviewGenerator
 from app.ai import DocumentClassifier, PromptManager
 from app.directory import DirectoryManager, CategoryManager
 from app.api import documents_bp, directories_bp, monitoring_bp
+from app.api.math_learning import math_bp
 from app.monitoring import get_logger, ErrorReporter, LogAggregator
 from app.monitoring.performance_tracker import get_performance_tracker
 
@@ -24,6 +25,7 @@ app = Flask(__name__)
 app.register_blueprint(documents_bp)
 app.register_blueprint(directories_bp)
 app.register_blueprint(monitoring_bp)
+app.register_blueprint(math_bp)
 
 # Monitoring Services initialisieren
 logger = get_logger('document_sorter')
@@ -93,21 +95,22 @@ def classify_document(text, filename=None):
 
     # Logging für Kompatibilität
     logger.info("AI classification response",
-               parsed_category=result['category'],
+               parsed_category=result['category']['category'],
+               parsed_subdirectory=result['category'].get('subdirectory', ''),
                context_hints=result['context_hints'],
                available_categories=categories[:5],  # Log first 5 for brevity
                filename=filename,
                confidence=result['confidence'])
 
-    if result['category'] in categories:
-        logger.info("AI category match found", selected_category=result['category'])
+    if result['category']['category'] in categories:
+        logger.info("AI category match found", selected_category=result['category']['category'])
     elif result['fallback_used']:
         logger.warning("AI returned invalid category, using fallback",
-                      parsed_category=result['category'],
+                      parsed_category=result['category']['category'],
                       available_categories=categories[:5],
-                      fallback=result['category'])
+                      fallback=result['category']['category'])
 
-    return result['category']
+    return result['category']['category']
 
 @app.route('/')
 def index():
