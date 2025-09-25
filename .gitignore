@@ -64,4 +64,5 @@ docs/_build/
 # Personal directories (examples - adapt as needed)
 # /Users/username/Documents
 # /Users/username/Desktop/scans
-# /path/to/your/scan/directory
+# /path/to/your/scan/directory__pycache__/
+*.pyc
