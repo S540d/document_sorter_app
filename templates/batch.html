@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batch Processing - Document Sorter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .progress-container {
+            min-height: 20px;
+        }
+        .status-badge {
+            font-size: 0.8em;
+        }
+        .job-item {
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            margin-bottom: 0.5rem;
+            padding: 0.75rem;
+        }
+        .job-item.running {
+            border-color: #0d6efd;
+            background-color: #f8f9ff;
+        }
+        .job-item.completed {
+            border-color: #198754;
+            background-color: #f8fff9;
+        }
+        .job-item.failed {
+            border-color: #dc3545;
+            background-color: #fff8f8;
+        }
+        .operation-card {
+            margin-bottom: 1.5rem;
+        }
+        .file-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1><i class="fas fa-layer-group"></i> Batch Processing</h1>
+                    <div>
+                        <a href="/" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-arrow-left"></i> Zurück
+                        </a>
+                        <button class="btn btn-primary" id="createQuickBatch">
+                            <i class="fas fa-rocket"></i> Quick Batch
+                        </button>
+                        <button class="btn btn-success" id="createCustomBatch">
+                            <i class="fas fa-plus"></i> Custom Batch
+                        </button>
+                    </div>
+                </div>
+
+                <!-- System Status -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-tachometer-alt"></i> System Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4" id="workerStatus">-</div>
+                                    <div class="text-muted">Workers</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4" id="queueSize">-</div>
+                                    <div class="text-muted">Queue Size</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4" id="runningOps">-</div>
+                                    <div class="text-muted">Running</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center">
+                                    <div class="h4" id="completedOps">-</div>
+                                    <div class="text-muted">Completed</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Operations List -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-list"></i> Batch Operations</h5>
+                        <button class="btn btn-sm btn-outline-primary" id="refreshOperations">
+                            <i class="fas fa-refresh"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="operationsList">
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                <div class="mt-2">Loading operations...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Custom Batch Modal -->
+    <div class="modal fade" id="customBatchModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Custom Batch</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="customBatchForm">
+                        <div class="mb-3">
+                            <label for="batchName" class="form-label">Operation Name</label>
+                            <input type="text" class="form-control" id="batchName" placeholder="Enter operation name">
+                        </div>
+                        <div class="mb-3">
+                            <label for="targetCategory" class="form-label">Target Category (Optional)</label>
+                            <select class="form-select" id="targetCategory">
+                                <option value="">Auto-classify with AI</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Select Files</label>
+                            <div class="file-list border rounded p-3" id="fileSelection">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading files...
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="autoStart" checked>
+                            <label class="form-check-label" for="autoStart">
+                                Start processing immediately
+                            </label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="createBatchBtn">Create Batch</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let refreshInterval;
+        let customBatchModal;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            customBatchModal = new bootstrap.Modal(document.getElementById('customBatchModal'));
+
+            loadBatchStatus();
+            loadOperations();
+            loadCategories();
+
+            // Auto-refresh every 5 seconds
+            refreshInterval = setInterval(() => {
+                loadBatchStatus();
+                loadOperations();
+            }, 5000);
+
+            // Event listeners
+            document.getElementById('createQuickBatch').addEventListener('click', createQuickBatch);
+            document.getElementById('createCustomBatch').addEventListener('click', showCustomBatchModal);
+            document.getElementById('createBatchBtn').addEventListener('click', createCustomBatch);
+            document.getElementById('refreshOperations').addEventListener('click', () => {
+                loadBatchStatus();
+                loadOperations();
+            });
+        });
+
+        async function loadBatchStatus() {
+            try {
+                const response = await fetch('/api/batch/status');
+                const data = await response.json();
+
+                document.getElementById('workerStatus').textContent =
+                    data.processor_running ? `${data.worker_count} Active` : 'Stopped';
+                document.getElementById('queueSize').textContent = data.queue_size;
+                document.getElementById('runningOps').textContent = data.operations_summary.running;
+                document.getElementById('completedOps').textContent = data.operations_summary.completed;
+
+                // Update worker status color
+                const workerStatusEl = document.getElementById('workerStatus');
+                workerStatusEl.className = data.processor_running ? 'h4 text-success' : 'h4 text-warning';
+            } catch (error) {
+                console.error('Failed to load batch status:', error);
+            }
+        }
+
+        async function loadOperations() {
+            try {
+                const response = await fetch('/api/batch/operations');
+                const data = await response.json();
+
+                const container = document.getElementById('operationsList');
+
+                if (data.operations.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-2x"></i>
+                            <div class="mt-2">No batch operations found</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = data.operations.map(op => createOperationCard(op)).join('');
+            } catch (error) {
+                console.error('Failed to load operations:', error);
+                document.getElementById('operationsList').innerHTML = `
+                    <div class="text-center text-danger py-4">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <div class="mt-2">Failed to load operations</div>
+                    </div>
+                `;
+            }
+        }
+
+        function createOperationCard(operation) {
+            const statusColor = {
+                'pending': 'secondary',
+                'running': 'primary',
+                'completed': 'success',
+                'failed': 'danger',
+                'cancelled': 'warning'
+            }[operation.status] || 'secondary';
+
+            const progressPercent = Math.round(operation.progress);
+
+            return `
+                <div class="operation-card">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="fas fa-layer-group"></i> ${operation.name}
+                                <span class="badge bg-${statusColor} ms-2">${operation.status}</span>
+                            </h6>
+                            <div>
+                                ${operation.status === 'pending' ? `
+                                    <button class="btn btn-sm btn-success me-2" onclick="startOperation('${operation.id}')">
+                                        <i class="fas fa-play"></i> Start
+                                    </button>
+                                ` : ''}
+                                ${operation.status === 'running' ? `
+                                    <button class="btn btn-sm btn-warning me-2" onclick="cancelOperation('${operation.id}')">
+                                        <i class="fas fa-stop"></i> Cancel
+                                    </button>
+                                ` : ''}
+                                ${['completed', 'failed', 'cancelled'].includes(operation.status) ? `
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteOperation('${operation.id}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                ` : ''}
+                                <button class="btn btn-sm btn-outline-info" onclick="toggleDetails('${operation.id}')">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-3">
+                                    <strong>Total Jobs:</strong> ${operation.total_jobs}
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Completed:</strong> ${operation.completed_jobs}
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Failed:</strong> ${operation.failed_jobs}
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Progress:</strong> ${progressPercent}%
+                                </div>
+                            </div>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-${statusColor}" style="width: ${progressPercent}%"></div>
+                            </div>
+                            <div class="collapse" id="details-${operation.id}">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="loadOperationDetails('${operation.id}')">
+                                    <i class="fas fa-eye"></i> Load Job Details
+                                </button>
+                                <div id="job-details-${operation.id}" class="mt-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function createQuickBatch() {
+            try {
+                const response = await fetch('/api/batch/quick-batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: `Quick Batch - ${new Date().toLocaleString()}`
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(`Quick batch created with ${data.total_files} files!`);
+                    loadOperations();
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (error) {
+                alert('Failed to create quick batch');
+                console.error(error);
+            }
+        }
+
+        async function showCustomBatchModal() {
+            await loadAvailableFiles();
+            customBatchModal.show();
+        }
+
+        async function loadCategories() {
+            try {
+                const response = await fetch('/api/directory-structure');
+                const data = await response.json();
+
+                const select = document.getElementById('targetCategory');
+                select.innerHTML = '<option value="">Auto-classify with AI</option>';
+
+                if (data.categories) {
+                    data.categories.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category;
+                        option.textContent = category;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load categories:', error);
+            }
+        }
+
+        async function loadAvailableFiles() {
+            try {
+                const response = await fetch('/api/scan-files');
+                const data = await response.json();
+
+                const container = document.getElementById('fileSelection');
+
+                if (data.files.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center text-muted">
+                            <i class="fas fa-inbox"></i> No PDF files found
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = data.files.map(file => `
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="${file.path}" id="file-${file.name}">
+                        <label class="form-check-label" for="file-${file.name}">
+                            <strong>${file.name}</strong>
+                            <small class="text-muted d-block">${(file.size / 1024 / 1024).toFixed(2)} MB</small>
+                        </label>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load files:', error);
+            }
+        }
+
+        async function createCustomBatch() {
+            const name = document.getElementById('batchName').value || 'Custom Batch';
+            const targetCategory = document.getElementById('targetCategory').value;
+            const autoStart = document.getElementById('autoStart').checked;
+
+            const selectedFiles = Array.from(document.querySelectorAll('#fileSelection input:checked'))
+                .map(input => input.value);
+
+            if (selectedFiles.length === 0) {
+                alert('Please select at least one file');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/batch/operations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        file_paths: selectedFiles,
+                        target_category: targetCategory || null,
+                        auto_process: autoStart
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    customBatchModal.hide();
+                    alert(`Batch created with ${data.valid_paths.length} files!`);
+                    loadOperations();
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (error) {
+                alert('Failed to create batch');
+                console.error(error);
+            }
+        }
+
+        async function startOperation(operationId) {
+            try {
+                const response = await fetch(`/api/batch/operations/${operationId}/start`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    loadOperations();
+                } else {
+                    const data = await response.json();
+                    alert(`Failed to start operation: ${data.error}`);
+                }
+            } catch (error) {
+                alert('Failed to start operation');
+                console.error(error);
+            }
+        }
+
+        async function cancelOperation(operationId) {
+            if (confirm('Are you sure you want to cancel this operation?')) {
+                try {
+                    const response = await fetch(`/api/batch/operations/${operationId}/cancel`, {
+                        method: 'POST'
+                    });
+
+                    if (response.ok) {
+                        loadOperations();
+                    } else {
+                        const data = await response.json();
+                        alert(`Failed to cancel operation: ${data.error}`);
+                    }
+                } catch (error) {
+                    alert('Failed to cancel operation');
+                    console.error(error);
+                }
+            }
+        }
+
+        async function deleteOperation(operationId) {
+            if (confirm('Are you sure you want to delete this operation?')) {
+                try {
+                    const response = await fetch(`/api/batch/operations/${operationId}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                        loadOperations();
+                    } else {
+                        const data = await response.json();
+                        alert(`Failed to delete operation: ${data.error}`);
+                    }
+                } catch (error) {
+                    alert('Failed to delete operation');
+                    console.error(error);
+                }
+            }
+        }
+
+        function toggleDetails(operationId) {
+            const details = document.getElementById(`details-${operationId}`);
+            const btn = details.previousElementSibling.querySelector('button:last-child i');
+
+            details.classList.toggle('show');
+            btn.classList.toggle('fa-chevron-down');
+            btn.classList.toggle('fa-chevron-up');
+        }
+
+        async function loadOperationDetails(operationId) {
+            try {
+                const response = await fetch(`/api/batch/operations/${operationId}`);
+                const data = await response.json();
+
+                const container = document.getElementById(`job-details-${operationId}`);
+
+                if (data.jobs && data.jobs.length > 0) {
+                    container.innerHTML = data.jobs.map(job => `
+                        <div class="job-item ${job.status}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>${job.file_path.split('/').pop()}</strong>
+                                    <span class="badge status-badge bg-${getStatusColor(job.status)} ms-2">${job.status}</span>
+                                    ${job.error_message ? `<div class="text-danger small mt-1">${job.error_message}</div>` : ''}
+                                </div>
+                                <div class="text-end">
+                                    <div class="small text-muted">${Math.round(job.progress)}%</div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="text-muted">No job details available</div>';
+                }
+            } catch (error) {
+                console.error('Failed to load operation details:', error);
+            }
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'pending': 'secondary',
+                'running': 'primary',
+                'completed': 'success',
+                'failed': 'danger',
+                'cancelled': 'warning'
+            };
+            return colors[status] || 'secondary';
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

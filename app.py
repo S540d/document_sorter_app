@@ -12,8 +12,14 @@ from app.ai import DocumentClassifier, PromptManager
 from app.directory import DirectoryManager, CategoryManager
 from app.api import documents_bp, directories_bp, monitoring_bp
 from app.api.math_learning import math_bp
+from app.api.batch import batch_bp
+from app.api.templates import templates_bp
+from app.api.workflows import workflows_bp
 from app.monitoring import get_logger, ErrorReporter, LogAggregator
 from app.monitoring.performance_tracker import get_performance_tracker
+from app.error_handlers import register_error_handlers
+from app.production_config import config_manager
+from app.middleware import register_middleware
 
 # Import centralized configuration
 from app.settings import config, CONFIG
@@ -21,11 +27,23 @@ from app.settings import config, CONFIG
 
 app = Flask(__name__)
 
+# Initialize production configuration
+config_manager.initialize_app(app)
+
+# Register global error handlers
+register_error_handlers(app)
+
+# Register performance and security middleware
+register_middleware(app)
+
 # Register blueprints
 app.register_blueprint(documents_bp)
 app.register_blueprint(directories_bp)
 app.register_blueprint(monitoring_bp)
 app.register_blueprint(math_bp)
+app.register_blueprint(batch_bp)
+app.register_blueprint(templates_bp)
+app.register_blueprint(workflows_bp)
 
 # Monitoring Services initialisieren
 logger = get_logger('document_sorter')
@@ -118,6 +136,21 @@ def index():
     categories = category_manager.get_smart_categories()
     return render_template('index.html', categories=categories)
 
+@app.route('/batch')
+def batch():
+    """Batch Processing Interface"""
+    return render_template('batch.html')
+
+@app.route('/templates')
+def templates():
+    """Document Templates Interface"""
+    return render_template('templates.html')
+
+@app.route('/workflows')
+def workflows():
+    """Workflow Management Interface"""
+    return render_template('workflows.html')
+
 # All API endpoints now handled by blueprints
 
 if __name__ == '__main__':
@@ -126,6 +159,9 @@ if __name__ == '__main__':
         if not os.path.exists(dir_path):
             logger.warning(f"Directory does not exist: {dir_path}")
             print(f"Warning: Directory {dir_path} does not exist")
+
+    # Print production configuration summary
+    config_manager.print_config_summary()
 
     # Initialisierung loggen
     logger.info("Starting Document Sorter application",
@@ -140,6 +176,7 @@ if __name__ == '__main__':
     print(f"🤖 LM Studio URL: {CONFIG['LM_STUDIO_URL']}")
     print(f"📊 Monitoring: /api/monitoring/status")
     print(f"📝 Logs: /api/monitoring/logs")
+    print(f"🏥 Health Check: /api/monitoring/health")
 
     try:
         app.run(debug=config.debug_mode, host=config.host, port=config.port)

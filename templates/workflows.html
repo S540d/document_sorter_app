@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Rules - Document Sorter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .rule-card {
+            margin-bottom: 1rem;
+        }
+        .rule-card.high-priority {
+            border-left: 4px solid #dc3545;
+        }
+        .rule-card.medium-priority {
+            border-left: 4px solid #ffc107;
+        }
+        .rule-card.low-priority {
+            border-left: 4px solid #6c757d;
+        }
+        .rule-card.disabled {
+            opacity: 0.6;
+            background-color: #f8f9fa;
+        }
+        .condition-badge {
+            font-size: 0.8em;
+            margin: 2px;
+        }
+        .action-badge {
+            font-size: 0.8em;
+            margin: 2px;
+        }
+        .test-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .test-result {
+            margin-top: 15px;
+        }
+        .test-success {
+            border-left: 4px solid #28a745;
+            background-color: #f8fff9;
+        }
+        .test-info {
+            border-left: 4px solid #17a2b8;
+            background-color: #f8fdff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1><i class="fas fa-sitemap"></i> Workflow Rules</h1>
+                    <div>
+                        <a href="/" class="btn btn-outline-secondary me-2">
+                            <i class="fas fa-arrow-left"></i> Zurück
+                        </a>
+                        <button class="btn btn-success" id="createRuleBtn">
+                            <i class="fas fa-plus"></i> New Rule
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h4 id="totalRules">-</h4>
+                                <div class="text-muted">Total Rules</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h4 id="enabledRules">-</h4>
+                                <div class="text-muted">Enabled</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h4 id="actionTypes">-</h4>
+                                <div class="text-muted">Action Types</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h4 id="highPriorityRules">-</h4>
+                                <div class="text-muted">High Priority</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Rules List -->
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5><i class="fas fa-list"></i> Workflow Rules</h5>
+                                <div>
+                                    <select class="form-select form-select-sm d-inline-block w-auto me-2" id="filterByPriority">
+                                        <option value="">All Priorities</option>
+                                        <option value="10">High (10)</option>
+                                        <option value="5">Medium (5)</option>
+                                        <option value="1">Low (1)</option>
+                                    </select>
+                                    <button class="btn btn-sm btn-outline-primary" id="refreshRules">
+                                        <i class="fas fa-refresh"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="rulesList">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-spinner fa-spin fa-2x"></i>
+                                        <div class="mt-2">Loading rules...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Test Area -->
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-vial"></i> Test Workflow</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="test-area">
+                                    <div class="mb-3">
+                                        <label for="testFilePath" class="form-label">File Path</label>
+                                        <input type="text" class="form-control" id="testFilePath"
+                                               placeholder="/path/to/test/document.pdf">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="testContext" class="form-label">Context (JSON)</label>
+                                        <textarea class="form-control" id="testContext" rows="4"
+                                                placeholder='{"is_batch": true, "target_category": "Finanzen"}'>{}</textarea>
+                                    </div>
+                                    <button class="btn btn-primary w-100" id="testWorkflow">
+                                        <i class="fas fa-play"></i> Test Workflow
+                                    </button>
+                                </div>
+
+                                <div id="testResult" class="test-result" style="display: none;">
+                                    <!-- Results will be inserted here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Rule Modal -->
+    <div class="modal fade" id="createRuleModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Workflow Rule</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createRuleForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="ruleId" class="form-label">Rule ID *</label>
+                                    <input type="text" class="form-control" id="ruleId" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="ruleName" class="form-label">Rule Name *</label>
+                                    <input type="text" class="form-control" id="ruleName" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="rulePriority" class="form-label">Priority</label>
+                                    <select class="form-select" id="rulePriority">
+                                        <option value="10">High (10)</option>
+                                        <option value="5" selected>Medium (5)</option>
+                                        <option value="1">Low (1)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="ruleEnabled" class="form-label">Status</label>
+                                    <select class="form-select" id="ruleEnabled">
+                                        <option value="true" selected>Enabled</option>
+                                        <option value="false">Disabled</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Conditions *</label>
+                            <div id="conditionsBuilder">
+                                <div class="border rounded p-3">
+                                    <div class="mb-2">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCondition()">
+                                            <i class="fas fa-plus"></i> Add Condition
+                                        </button>
+                                    </div>
+                                    <div id="conditionsList">
+                                        <!-- Conditions will be added here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Actions *</label>
+                            <div id="actionsBuilder">
+                                <div class="border rounded p-3">
+                                    <div class="mb-2">
+                                        <button type="button" class="btn btn-sm btn-outline-success" onclick="addAction()">
+                                            <i class="fas fa-plus"></i> Add Action
+                                        </button>
+                                    </div>
+                                    <div id="actionsList">
+                                        <!-- Actions will be added here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="saveRuleBtn">Create Rule</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let createRuleModal;
+        let availableConditions = [];
+        let availableActions = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            createRuleModal = new bootstrap.Modal(document.getElementById('createRuleModal'));
+
+            loadRules();
+            loadStats();
+            loadAvailableConditions();
+            loadAvailableActions();
+
+            // Event listeners
+            document.getElementById('createRuleBtn').addEventListener('click', () => createRuleModal.show());
+            document.getElementById('saveRuleBtn').addEventListener('click', createRule);
+            document.getElementById('refreshRules').addEventListener('click', loadRules);
+            document.getElementById('testWorkflow').addEventListener('click', testWorkflow);
+            document.getElementById('filterByPriority').addEventListener('change', filterRules);
+        });
+
+        async function loadRules() {
+            try {
+                const response = await fetch('/api/workflows/rules');
+                const data = await response.json();
+
+                const container = document.getElementById('rulesList');
+
+                if (data.rules.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-2x"></i>
+                            <div class="mt-2">No workflow rules found</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = data.rules.map(rule => createRuleCard(rule)).join('');
+
+            } catch (error) {
+                console.error('Failed to load rules:', error);
+                document.getElementById('rulesList').innerHTML = `
+                    <div class="text-center text-danger py-4">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        <div class="mt-2">Failed to load rules</div>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/workflows/stats');
+                const stats = await response.json();
+
+                document.getElementById('totalRules').textContent = stats.total_rules;
+                document.getElementById('enabledRules').textContent = stats.enabled_rules;
+                document.getElementById('actionTypes').textContent = Object.keys(stats.action_types).length;
+                document.getElementById('highPriorityRules').textContent = stats.by_priority[10] || 0;
+
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        async function loadAvailableConditions() {
+            try {
+                const response = await fetch('/api/workflows/conditions');
+                const data = await response.json();
+                availableConditions = data.conditions;
+            } catch (error) {
+                console.error('Failed to load conditions:', error);
+            }
+        }
+
+        async function loadAvailableActions() {
+            try {
+                const response = await fetch('/api/workflows/actions');
+                const data = await response.json();
+                availableActions = data.actions;
+            } catch (error) {
+                console.error('Failed to load actions:', error);
+            }
+        }
+
+        function createRuleCard(rule) {
+            const priorityClass = rule.priority >= 8 ? 'high-priority' :
+                                rule.priority >= 5 ? 'medium-priority' : 'low-priority';
+
+            const disabledClass = rule.enabled ? '' : 'disabled';
+
+            return `
+                <div class="rule-card card ${priorityClass} ${disabledClass}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-sitemap"></i> ${rule.name}
+                            <span class="badge bg-secondary ms-2">Priority: ${rule.priority}</span>
+                            <span class="badge ${rule.enabled ? 'bg-success' : 'bg-warning'} ms-1">
+                                ${rule.enabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                        </h6>
+                        <div>
+                            <button class="btn btn-sm btn-outline-info me-2" onclick="toggleRule('${rule.id}', ${!rule.enabled})">
+                                <i class="fas fa-${rule.enabled ? 'pause' : 'play'}"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteRule('${rule.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-muted d-block mb-1">Conditions:</small>
+                                <div class="mb-2">
+                                    ${Object.entries(rule.conditions).map(([key, value]) =>
+                                        `<span class="badge condition-badge bg-info text-white">${key}: ${JSON.stringify(value)}</span>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block mb-1">Actions:</small>
+                                <div>
+                                    ${rule.actions.map(action =>
+                                        `<span class="badge action-badge bg-success text-white">${action.type}${action.category ? ': ' + action.category : ''}</span>`
+                                    ).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function addCondition() {
+            const conditionsList = document.getElementById('conditionsList');
+            const conditionId = 'condition_' + Date.now();
+
+            const conditionHtml = `
+                <div class="border rounded p-2 mb-2" id="${conditionId}">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <select class="form-select form-select-sm" onchange="updateConditionValue('${conditionId}')">
+                                <option value="">Select condition...</option>
+                                ${availableConditions.map(cond =>
+                                    `<option value="${cond.name}">${cond.name}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" class="form-control form-control-sm" placeholder="Value (JSON format)">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeCondition('${conditionId}')">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            conditionsList.insertAdjacentHTML('beforeend', conditionHtml);
+        }
+
+        function addAction() {
+            const actionsList = document.getElementById('actionsList');
+            const actionId = 'action_' + Date.now();
+
+            const actionHtml = `
+                <div class="border rounded p-2 mb-2" id="${actionId}">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <select class="form-select form-select-sm" onchange="updateActionFields('${actionId}')">
+                                <option value="">Select action...</option>
+                                ${availableActions.map(action =>
+                                    `<option value="${action.type}">${action.name}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="${actionId}_params">
+                            <!-- Parameters will be added here -->
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAction('${actionId}')">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            actionsList.insertAdjacentHTML('beforeend', actionHtml);
+        }
+
+        function removeCondition(conditionId) {
+            document.getElementById(conditionId).remove();
+        }
+
+        function removeAction(actionId) {
+            document.getElementById(actionId).remove();
+        }
+
+        function updateActionFields(actionId) {
+            const select = document.querySelector(`#${actionId} select`);
+            const paramsDiv = document.getElementById(`${actionId}_params`);
+            const actionType = select.value;
+
+            if (actionType === 'force_category') {
+                paramsDiv.innerHTML = `
+                    <input type="text" class="form-control form-control-sm" placeholder="Category name" name="category">
+                `;
+            } else {
+                paramsDiv.innerHTML = '';
+            }
+        }
+
+        async function createRule() {
+            const ruleData = {
+                id: document.getElementById('ruleId').value,
+                name: document.getElementById('ruleName').value,
+                priority: parseInt(document.getElementById('rulePriority').value),
+                enabled: document.getElementById('ruleEnabled').value === 'true',
+                conditions: {},
+                actions: []
+            };
+
+            // Collect conditions
+            const conditionDivs = document.querySelectorAll('#conditionsList > div');
+            conditionDivs.forEach(div => {
+                const select = div.querySelector('select');
+                const input = div.querySelector('input');
+                if (select.value && input.value) {
+                    try {
+                        ruleData.conditions[select.value] = JSON.parse(input.value);
+                    } catch (e) {
+                        // If not JSON, treat as string
+                        ruleData.conditions[select.value] = input.value;
+                    }
+                }
+            });
+
+            // Collect actions
+            const actionDivs = document.querySelectorAll('#actionsList > div');
+            actionDivs.forEach(div => {
+                const select = div.querySelector('select');
+                const categoryInput = div.querySelector('input[name="category"]');
+
+                if (select.value) {
+                    const action = { type: select.value };
+                    if (categoryInput && categoryInput.value) {
+                        action.category = categoryInput.value;
+                    }
+                    ruleData.actions.push(action);
+                }
+            });
+
+            try {
+                const response = await fetch('/api/workflows/rules', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(ruleData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    createRuleModal.hide();
+                    document.getElementById('createRuleForm').reset();
+                    document.getElementById('conditionsList').innerHTML = '';
+                    document.getElementById('actionsList').innerHTML = '';
+                    loadRules();
+                    loadStats();
+                    alert('Workflow rule created successfully!');
+                } else {
+                    alert(`Error: ${result.error}`);
+                }
+
+            } catch (error) {
+                alert('Failed to create workflow rule');
+                console.error(error);
+            }
+        }
+
+        async function deleteRule(ruleId) {
+            if (confirm('Are you sure you want to delete this workflow rule?')) {
+                try {
+                    const response = await fetch(`/api/workflows/rules/${ruleId}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                        loadRules();
+                        loadStats();
+                    } else {
+                        const result = await response.json();
+                        alert(`Error: ${result.error}`);
+                    }
+
+                } catch (error) {
+                    alert('Failed to delete workflow rule');
+                    console.error(error);
+                }
+            }
+        }
+
+        async function testWorkflow() {
+            const filePath = document.getElementById('testFilePath').value;
+            const contextText = document.getElementById('testContext').value;
+
+            if (!filePath.trim()) {
+                alert('Please enter a file path to test');
+                return;
+            }
+
+            let context;
+            try {
+                context = JSON.parse(contextText);
+            } catch (e) {
+                alert('Invalid JSON in context field');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/workflows/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_path: filePath, context })
+                });
+
+                const result = await response.json();
+                const resultDiv = document.getElementById('testResult');
+
+                let resultHtml = `
+                    <div class="test-info p-3 rounded">
+                        <h6><i class="fas fa-info-circle text-info"></i> Workflow Test Result</h6>
+                        <p><strong>File:</strong> ${result.file_path}</p>
+                        <p><strong>Determined Action:</strong> ${result.determined_action}</p>
+                        <p><strong>Applicable Rules:</strong> ${result.applicable_rules.length}</p>
+                `;
+
+                if (result.applicable_rules.length > 0) {
+                    resultHtml += `<p><strong>Rules:</strong> ${result.applicable_rules.map(r => r.name).join(', ')}</p>`;
+                }
+
+                if (result.template_recognition) {
+                    resultHtml += `
+                        <p><strong>Template Recognition:</strong> ${result.template_recognition.document_type}
+                        (${(result.template_recognition.confidence * 100).toFixed(1)}%)</p>
+                    `;
+                }
+
+                resultHtml += '</div>';
+                resultDiv.innerHTML = resultHtml;
+                resultDiv.style.display = 'block';
+
+            } catch (error) {
+                console.error('Failed to test workflow:', error);
+                alert('Failed to test workflow');
+            }
+        }
+
+        function filterRules() {
+            const selectedPriority = document.getElementById('filterByPriority').value;
+            const ruleCards = document.querySelectorAll('.rule-card');
+
+            ruleCards.forEach(card => {
+                const prioritySpan = card.querySelector('.badge.bg-secondary');
+                if (!selectedPriority || (prioritySpan && prioritySpan.textContent.includes(selectedPriority))) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

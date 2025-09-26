@@ -9,6 +9,7 @@ from flask import Blueprint, request, jsonify
 
 from ..monitoring import get_logger, ErrorReporter, LogAggregator
 from ..monitoring.performance_tracker import get_performance_tracker
+from ..middleware import performance_monitor, rate_limiter
 
 # Create blueprint
 monitoring_bp = Blueprint('monitoring', __name__, url_prefix='/api')
@@ -126,6 +127,62 @@ def cleanup_logs():
         logger.error("Log cleanup failed", exception=e)
         return jsonify({'error': 'Cleanup failed'}), 500
 
+
+@monitoring_bp.route('/monitoring/health')
+def health_check():
+    """Production health check endpoint"""
+    try:
+        # Basic health indicators
+        health_status = {
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'uptime': time.time() - getattr(health_check, 'start_time', time.time()),
+            'version': '1.0.0'
+        }
+
+        # Check critical components
+        checks = {}
+
+        # Check log aggregator
+        try:
+            log_aggregator.get_log_statistics()
+            checks['logging'] = 'ok'
+        except:
+            checks['logging'] = 'error'
+            health_status['status'] = 'degraded'
+
+        # Check error reporter
+        try:
+            error_reporter.get_error_statistics()
+            checks['error_reporting'] = 'ok'
+        except:
+            checks['error_reporting'] = 'error'
+            health_status['status'] = 'degraded'
+
+        # Check performance tracker
+        try:
+            performance_tracker.get_current_metrics()
+            checks['performance_tracking'] = 'ok'
+        except:
+            checks['performance_tracking'] = 'error'
+            health_status['status'] = 'degraded'
+
+        health_status['checks'] = checks
+
+        # Return appropriate status code
+        status_code = 200 if health_status['status'] in ['healthy', 'degraded'] else 503
+        return jsonify(health_status), status_code
+
+    except Exception as e:
+        logger.error("Health check failed", exception=e)
+        return jsonify({
+            'status': 'unhealthy',
+            'timestamp': datetime.now().isoformat(),
+            'error': str(e)
+        }), 503
+
+# Set start time for uptime calculation
+health_check.start_time = time.time()
 
 @monitoring_bp.route('/monitoring/status')
 def monitoring_status():
@@ -250,6 +307,39 @@ def record_custom_metric():
     except Exception as e:
         logger.error("Failed to record custom metric", exception=e)
         return jsonify({'error': 'Failed to record metric'}), 500
+
+
+@monitoring_bp.route('/performance/middleware')
+def get_middleware_performance():
+    """Gibt Middleware Performance-Statistiken zurück"""
+    try:
+        stats = performance_monitor.get_performance_stats()
+
+        return jsonify({
+            'middleware_performance': stats,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error("Failed to get middleware performance", exception=e)
+        return jsonify({'error': 'Failed to retrieve middleware performance'}), 500
+
+
+@monitoring_bp.route('/security/rate-limits')
+def get_rate_limit_status():
+    """Gibt Rate Limiting Status zurück"""
+    try:
+        client_ip = request.remote_addr
+        rate_info = rate_limiter.get_rate_limit_info(client_ip)
+
+        return jsonify({
+            'client_ip': client_ip,
+            'rate_limit_info': rate_info,
+            'active_buckets': len(rate_limiter.buckets),
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error("Failed to get rate limit status", exception=e)
+        return jsonify({'error': 'Failed to retrieve rate limit status'}), 500
 
 
 # Dashboard Endpoint

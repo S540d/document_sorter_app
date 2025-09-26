@@ -13,7 +13,7 @@ class Config:
 
     # Default values (fallbacks)
     DEFAULT_LM_STUDIO_URL = 'http://localhost:1234/v1/chat/completions'
-    DEFAULT_SCAN_DIR = './scans'
+    DEFAULT_SCAN_DIR = '/documents/0001_scanbot'
     DEFAULT_SORTED_DIR = './sorted'
     DEFAULT_DEBUG_MODE = True
     DEFAULT_PORT = 5000
@@ -29,8 +29,7 @@ class Config:
         'node_modules',
         '.localized',
         'Scanbot',
-        'scanbot',
-        '0001_scanbot'
+        'scanbot'
     ]
 
     def __init__(self):

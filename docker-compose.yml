@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  document-sorter:
+    build:
+      context: .
+      target: production
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - PYTHONPATH=/app
+    volumes:
+      - ./data/scan:/app/data/scan
+      - ./data/sorted:/app/data/sorted
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/monitoring/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  document-sorter-dev:
+    build:
+      context: .
+      target: development
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - PYTHONPATH=/app
+    volumes:
+      - .:/app
+      - ./data/scan:/app/data/scan
+      - ./data/sorted:/app/data/sorted
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+    profiles:
+      - dev
+
+networks:
+  default:
+    name: document-sorter-network
+
+volumes:
+  scan_data:
+  sorted_data:
+  app_logs:

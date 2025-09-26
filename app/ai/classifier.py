@@ -6,6 +6,7 @@ Handles document classification using AI models via LM Studio
 import requests
 from typing import List, Optional, Dict, Any
 from .prompts import PromptManager
+from .document_templates import document_template_engine, DocumentTypeResult
 from ..settings import config
 
 
@@ -217,7 +218,7 @@ class DocumentClassifier:
     def classify_with_analysis(self, text: str, filename: str, available_categories: List[str],
                               category_info: str) -> Dict[str, Any]:
         """
-        Classify document and return detailed analysis
+        Classify document and return detailed analysis with template recognition
 
         Args:
             text: Document text content
@@ -228,20 +229,206 @@ class DocumentClassifier:
         Returns:
             Dictionary with classification result and analysis
         """
+        # Step 1: Template-based document type recognition
+        template_result = document_template_engine.recognize_document_type(text, filename)
+
         # Extract context hints
         context_hints = self.prompt_manager.extract_document_context(text, filename)
 
-        # Classify document
-        classification_result = self.classify_document(text, filename, available_categories, category_info)
+        # Step 2: Enhanced classification with template information
+        classification_result = self.classify_document_enhanced(
+            text, filename, available_categories, category_info, template_result
+        )
 
-        # Return detailed analysis
-        return {
+        # Build detailed analysis
+        analysis = {
             'category': classification_result,
             'context_hints': context_hints,
             'text_length': len(text),
             'filename': filename,
             'confidence': 'high' if classification_result['category'] in available_categories else 'low',
             'fallback_used': classification_result['category'] not in available_categories
+        }
+
+        # Add template information if available
+        if template_result:
+            analysis['template_recognition'] = {
+                'document_type': template_result.document_type,
+                'template_id': template_result.template_id,
+                'template_confidence': template_result.confidence,
+                'matched_patterns': template_result.matched_patterns,
+                'matched_keywords': template_result.matched_keywords,
+                'structural_matches': template_result.structural_matches,
+                'metadata': template_result.metadata
+            }
+
+            # Update confidence based on template recognition
+            if template_result.confidence > 0.8:
+                analysis['confidence'] = 'very_high'
+            elif template_result.confidence > 0.6:
+                analysis['confidence'] = 'high'
+        else:
+            analysis['template_recognition'] = None
+
+        return analysis
+
+    def classify_document_enhanced(self, text: str, filename: str, available_categories: List[str],
+                                 category_info: str, template_result: Optional[DocumentTypeResult] = None) -> Dict[str, str]:
+        """
+        Enhanced classification that considers template recognition results
+
+        Args:
+            text: Document text content
+            filename: Document filename
+            available_categories: List of valid categories
+            category_info: Formatted category information
+            template_result: Template recognition result (optional)
+
+        Returns:
+            Dictionary with 'category' and 'subdirectory' keys
+        """
+        # If we have high-confidence template recognition, use it to guide classification
+        if template_result and template_result.confidence > 0.8:
+            # Try to map document type to available categories
+            category_mapping = self._map_document_type_to_category(
+                template_result.document_type, available_categories
+            )
+
+            if category_mapping:
+                return {
+                    'category': category_mapping['category'],
+                    'subdirectory': category_mapping.get('subdirectory', template_result.document_type)
+                }
+
+        # Fallback to regular AI classification
+        try:
+            # Build enhanced prompt with template information
+            prompt = self._build_enhanced_prompt(text, filename, category_info, template_result)
+
+            # Prepare request
+            request_config = self.prompt_manager.get_request_config()
+            request_data = {
+                **request_config,
+                "messages": [
+                    {"role": "system", "content": self._get_enhanced_system_message()},
+                    {"role": "user", "content": prompt}
+                ]
+            }
+
+            # Make API request
+            response = requests.post(
+                self.lm_studio_url,
+                json=request_data,
+                timeout=self.timeout
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                raw_response = result['choices'][0]['message']['content'].strip()
+
+                # Parse response and extract category + subdirectory
+                classification_result = self.parse_ai_response(raw_response, available_categories)
+
+                if classification_result['category'] in available_categories:
+                    return classification_result
+                else:
+                    # Return first available category as fallback
+                    return {
+                        'category': available_categories[0] if available_categories else 'Sonstiges',
+                        'subdirectory': ''
+                    }
+
+            else:
+                print(f"LM Studio API error: {response.status_code} - {response.text}")
+                return self._enhanced_fallback_classification(text, filename, available_categories, template_result)
+
+        except Exception as e:
+            print(f"Error calling LM Studio: {e}")
+            return self._enhanced_fallback_classification(text, filename, available_categories, template_result)
+
+    def _map_document_type_to_category(self, document_type: str, available_categories: List[str]) -> Optional[Dict[str, str]]:
+        """Map document type to available category"""
+        type_mappings = {
+            'invoice': ['Steuern', 'Finanzen', 'Rechnungen'],
+            'contract': ['Verträge', 'Legal'],
+            'bank_statement': ['Banken', 'Finanzen'],
+            'insurance': ['Versicherungen'],
+            'employment_contract': ['Arbeit', 'Personal', 'HR'],
+            'rental_contract': ['Wohnen', 'Immobilien', 'Miete']
+        }
+
+        if document_type not in type_mappings:
+            return None
+
+        # Find best matching category
+        for preferred_category in type_mappings[document_type]:
+            for available_category in available_categories:
+                if preferred_category.lower() in available_category.lower():
+                    return {
+                        'category': available_category,
+                        'subdirectory': document_type
+                    }
+
+        return None
+
+    def _build_enhanced_prompt(self, text: str, filename: str, category_info: str,
+                             template_result: Optional[DocumentTypeResult] = None) -> str:
+        """Build enhanced prompt with template information"""
+        base_prompt = self.prompt_manager.build_classification_prompt(text, filename, category_info)
+
+        if template_result:
+            template_info = f"""
+
+TEMPLATE ANALYSIS:
+- Detected Document Type: {template_result.document_type}
+- Template Confidence: {template_result.confidence:.2f}
+- Matched Keywords: {', '.join(template_result.matched_keywords[:5])}
+- Structural Elements: {', '.join(template_result.structural_matches[:3])}
+
+Please consider this template analysis when making your classification decision."""
+
+            return base_prompt + template_info
+
+        return base_prompt
+
+    def _get_enhanced_system_message(self) -> str:
+        """Get enhanced system message with template awareness"""
+        return """You are an expert document classifier with access to template analysis results.
+
+You classify documents into categories and subdirectories based on:
+1. Document content and structure
+2. Template recognition results (when available)
+3. Keywords and patterns
+4. Available category structure
+
+When template analysis is provided, use it to inform your decision but don't be bound by it.
+Always respond in the format: CATEGORY|SUBDIRECTORY
+
+Focus on accuracy and use the template information to improve classification confidence."""
+
+    def _enhanced_fallback_classification(self, text: str, filename: str, available_categories: List[str],
+                                        template_result: Optional[DocumentTypeResult] = None) -> Dict[str, str]:
+        """Enhanced fallback classification with template information"""
+
+        # If we have template result, try to use it
+        if template_result and template_result.confidence > 0.5:
+            category_mapping = self._map_document_type_to_category(
+                template_result.document_type, available_categories
+            )
+            if category_mapping:
+                return category_mapping
+
+        # Fallback to regular smart classification
+        fallback_category = self._smart_fallback_classification(text, filename, available_categories)
+
+        # Add subdirectory based on template if available
+        subdirectory = ''
+        if template_result and template_result.confidence > 0.5:
+            subdirectory = template_result.document_type
+
+        return {
+            'category': fallback_category,
+            'subdirectory': subdirectory
         }
 
     def test_connection(self) -> Dict[str, Any]:

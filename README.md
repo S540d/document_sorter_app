@@ -1,28 +1,53 @@
 # Document Sorter
 
-An intelligent web application for automatic PDF document sorting with local AI support.
+An intelligent web application for automatic PDF document sorting with local AI support, featuring advanced workflow automation, batch processing, and production-ready deployment capabilities.
 
 ## Features
 
-- **AI-based classification** of PDF documents with smart fallback system
+### 🤖 **AI-Powered Processing**
+- **Template-based document recognition** with 6 built-in templates (invoices, contracts, bank statements, etc.)
+- **AI-enhanced classification** with smart fallback systems
+- **Workflow automation** with rule-based processing
+- **Confidence scoring** and metadata extraction
 - **Intelligent file renaming** with automatic date extraction and standardized naming
-- **Automatic sorting** into predefined or similar directories
-- **PDF preview** for better control
+
+### ⚡ **Advanced Workflow System**
+- **Batch processing** with multi-threaded workers and persistent state
+- **Rule-based automation** with customizable conditions and actions
+- **Template recognition** for automatic document type detection
+- **Real-time progress tracking** with detailed job status
+- **Queue management** with priority handling
+
+### 🏭 **Production-Ready Features**
+- **Comprehensive error handling** with global handlers and recovery mechanisms
+- **Performance monitoring** with rate limiting and security middleware
+- **Health checks** for service monitoring (`/api/monitoring/health`)
+- **Configuration management** with environment variable support
+- **Docker containerization** (optional) with multi-stage builds
+- **Security features** including request validation and rate limiting
+
+### 📊 **Monitoring & Analytics**
 - **Real-time system metrics** with live CPU, memory, and disk usage monitoring
-- **Comprehensive monitoring** with logging, error reporting, and performance tracking
-- **Modular architecture** with separate API blueprints
-- **Intelligent path suggestions** based on filenames and existing directory structure
-- **Smart category management** with enhanced blacklist filtering (including Scanbot artifacts)
-- **RESTful API** for integration with other systems
-- **User-friendly web interface** with real-time status updates
+- **Performance tracking** with response time analysis and alerts
+- **Error reporting** with structured logging and tracking IDs
+- **Dashboard interface** with comprehensive overview
+- **Export capabilities** for metrics and reports
 
-## Prerequisites
+### 🌐 **User Interface**
+- **3-column workflow** with files, intelligent processing, and manual controls
+- **Interactive web interface** with real-time status updates
+- **Workflow management** for rule creation and testing
+- **Batch processing interface** with progress visualization
+- **Template management** for document type configuration
 
+## Quick Start
+
+### Prerequisites
 - Python 3.8+
 - [LM Studio](https://lmstudio.ai/) with a running language model (e.g., DeepSeek R1)
 - PDF documents to sort
 
-## Installation
+### Installation
 
 1. **Clone repository:**
    ```bash
@@ -43,249 +68,342 @@ An intelligent web application for automatic PDF document sorting with local AI 
    pip install -r requirements.txt
    ```
 
-4. **Create configuration:**
+4. **Configure environment:**
    ```bash
    cp .env.example .env
+   # Edit .env file with your paths and settings
    ```
 
-5. **Configure .env file:**
-   Edit the `.env` file and adapt the paths to your system:
-   ```env
-   SCAN_DIR=/path/to/your/scanned/documents
-   SORTED_DIR=/path/to/your/sorted/documents
-   LM_STUDIO_URL=http://localhost:1234/v1/chat/completions
-   ```
+### Running the Application
 
-## LM Studio Setup
-
-1. **Install LM Studio** from https://lmstudio.ai/
-2. **Download model** (recommended: DeepSeek R1 or similar)
-3. **Start server** in LM Studio on port 1234
-4. **Adjust model name** in `.env` file if necessary
-
-## Usage
-
-1. **Start application:**
-   ```bash
-   python app.py
-   ```
-
-2. **Open web interface:**
-   Open http://127.0.0.1:5001 in your browser
-
-3. **Sort documents with new 3-column workflow:**
-
-   ### 📂 Files Column (Left)
-   - PDFs are automatically loaded from the scan directory
-   - Click on any file to analyze it
-   - Shows file metadata (size, modification date)
-
-   ### 🤖 Intelligent Column (Center)
-   - **AI-powered workflow** with one-click confirmation
-   - Automatic document analysis with confidence scores
-   - **Smart filename suggestions** with date extraction and title recognition
-   - **Clickable options** for dates and filenames
-   - Category predictions with context explanations
-   - **Execute AI Workflow** button for instant processing
-
-   ### ⚙️ Manual Column (Right)
-   - **Traditional category selection** with directory tree
-   - Full control over target location
-   - Custom filename and path editing
-   - Fallback option when AI suggestions need adjustment
-
-   ### Workflow Options
-   - **Intelligent Process**: Use AI suggestions with one-click confirmation
-   - **Manual Override**: Full control over categorization and naming
-   - **Hybrid Approach**: Start with AI suggestions, modify manually if needed
-
-## Intelligent File Renaming
-
-The application features an advanced file renaming system that automatically generates standardized, meaningful filenames:
-
-### Features
-- **📅 Date Extraction**: Automatically detects dates from document content using German date patterns
-- **🧹 Clean Naming**: Removes scanner artifacts (Scanbot, "Gescanntes Dokument", etc.)
-- **📊 Format Standardization**: Creates consistent `YYYY-MM-DD_description.pdf` format (category removed per user request)
-- **🎯 Smart Date Selection**: Chooses the most recent past date from extracted content
-- **🏷️ Flexible Title Extraction**: Intelligent document title recognition from PDF headers and content
-- **💡 Visual Feedback**: Shows original vs suggested filename with extraction details
-- **🖱️ Clickable Options**: Interactive date and filename selection in the intelligent workflow
-
-### Supported Date Formats
-- `DD.MM.YYYY` and `DD/MM/YYYY` (German standard)
-- `YYYY-MM-DD` (ISO format)
-- `DD.MM.YY` and `DD/MM/YY` (short year)
-- German month names: "15. März 2024", "10. Jan 2025"
-- Month abbreviations: "Mär", "Apr", "Dez"
-
-### Example Transformations
+**Development Mode:**
+```bash
+python app.py
 ```
-Original: "Scanbot_2024_03_15_document.pdf"
-Suggested: "2024-03-15_document.pdf"
 
-Original: "Gescanntes Dokument 123.pdf" (with "Kündigung" detected in content)
-Suggested: "2024-09-21_kuendigung.pdf"
+**Production Mode:**
+```bash
+# With Gunicorn (recommended for production)
+gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 app:app
 
-Original: "2023-09-23__gescanntes Dokument (2).pdf" (with invoice detected)
-Suggested: "2023-09-23_rechnung.pdf"
+# Or with environment configuration
+FLASK_ENV=production python app.py
 ```
+
+**Docker (Optional):**
+```bash
+# Development
+docker-compose --profile dev up
+
+# Production
+docker-compose up -d
+```
+
+### Access the Application
+- **Main Interface**: http://localhost:5000
+- **Health Check**: http://localhost:5000/api/monitoring/health
+- **Batch Processing**: http://localhost:5000/batch
+- **Workflow Management**: http://localhost:5000/workflows
+- **Templates**: http://localhost:5000/templates
 
 ## Configuration
 
 ### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SCAN_DIR` | Directory with PDFs to sort | `./scanned_documents` |
-| `SORTED_DIR` | Target directory for sorted documents | `./sorted_documents` |
-| `LM_STUDIO_URL` | LM Studio API URL | `http://localhost:1234/v1/chat/completions` |
-| `LM_STUDIO_MODEL` | Name of LM Studio model | `deepseek-r1` |
-| `PRELOAD_COUNT` | Number of documents to preprocess | `10` |
-| `DOCUMENT_CATEGORIES` | Available categories (comma-separated) | `Taxes,Insurance,...` |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SCAN_DIR` | `./scanned_documents` | Directory containing PDFs to sort |
+| `SORTED_DIR` | `./sorted_documents` | Target directory for sorted documents |
+| `LM_STUDIO_URL` | `http://localhost:1234` | LM Studio API URL |
+| `FLASK_ENV` | `development` | Environment mode (development/production) |
+| `FLASK_DEBUG` | `true` | Debug mode |
+| `WORKERS` | `4` | Number of Gunicorn workers |
+| `MAX_FILE_SIZE_MB` | `50` | Maximum upload file size |
+| `RATE_LIMIT_PER_MINUTE` | `60` | Rate limit per IP address |
+| `LOG_LEVEL` | `INFO` | Logging level |
+| `PERFORMANCE_TRACKING` | `true` | Enable performance monitoring |
 
-### Customize Categories
+### Production Configuration Example
 
-Default categories can be customized in the `.env` file:
-```env
-DOCUMENT_CATEGORIES=Category1,Category2,Category3
+```bash
+# .env for production
+FLASK_ENV=production
+FLASK_DEBUG=false
+WORKERS=8
+SCAN_DIR=/data/documents/scan
+SORTED_DIR=/data/documents/sorted
+LM_STUDIO_URL=http://ai-service:1234
+MAX_FILE_SIZE_MB=100
+RATE_LIMIT_PER_MINUTE=120
+LOG_LEVEL=WARNING
+PERFORMANCE_TRACKING=true
+ERROR_REPORTING=true
 ```
 
-## Development
+## Usage Guide
+
+### 1. Document Processing Workflow
+
+#### 📂 **Files Column (Left)**
+- Automatically loads PDFs from scan directory
+- Shows file metadata and preview
+- Click to analyze documents
+
+#### 🤖 **Intelligent Column (Center)**
+- **AI-powered workflow** with template recognition
+- **Smart filename suggestions** with date extraction
+- **Category predictions** with confidence scores
+- **One-click processing** with "Execute AI Workflow"
+- **Rule-based automation** for consistent processing
+
+#### ⚙️ **Manual Column (Right)**
+- **Traditional category selection** with directory tree
+- **Custom filename editing** and path control
+- **Fallback option** when AI suggestions need adjustment
+
+### 2. Workflow Management
+
+Create custom rules for automatic document processing:
+
+```json
+{
+  "conditions": {
+    "document_type": ["invoice"],
+    "min_template_confidence": 0.8
+  },
+  "actions": [
+    {
+      "type": "force_category",
+      "category": "Finance/Invoices"
+    }
+  ]
+}
+```
+
+### 3. Batch Processing
+
+Process multiple documents automatically:
+- Queue documents for batch processing
+- Monitor progress in real-time
+- View detailed processing results
+- Handle errors and retries automatically
+
+### 4. Template System
+
+Built-in document templates:
+- **Invoices**: Detects invoice patterns and amounts
+- **Contracts**: Identifies contract terms and parties
+- **Bank Statements**: Recognizes financial transactions
+- **Tax Documents**: Finds tax-related information
+- **Insurance**: Detects policy and claim documents
+- **Letters**: General correspondence recognition
+
+## API Reference
+
+### Document Processing
+- `GET /api/scan-files` - List available PDF files
+- `POST /api/process-document` - Process and classify document
+- `POST /api/move-document` - Move document to target directory
+- `POST /api/suggest-filename` - Generate filename suggestions
+
+### Workflow Management
+- `GET /api/workflows/rules` - List workflow rules
+- `POST /api/workflows/rules` - Create new workflow rule
+- `POST /api/workflows/process` - Process document with workflows
+- `POST /api/workflows/test` - Test workflow rules
+
+### Batch Processing
+- `POST /api/batch/create` - Create batch operation
+- `GET /api/batch/operations` - List batch operations
+- `GET /api/batch/operations/{id}` - Get operation status
+- `POST /api/batch/operations/{id}/start` - Start batch operation
+
+### Monitoring & Health
+- `GET /api/monitoring/health` - Health check endpoint
+- `GET /api/monitoring/status` - System status
+- `GET /api/performance/current` - Current performance metrics
+- `GET /api/performance/middleware` - Middleware performance
+- `GET /api/security/rate-limits` - Rate limiting status
+
+## Advanced Features
+
+### Intelligent File Renaming
+
+Automatically generates standardized, meaningful filenames:
+
+- **📅 Date Extraction**: Detects dates from document content
+- **🧹 Clean Naming**: Removes scanner artifacts (Scanbot, etc.)
+- **📊 Format Standardization**: Creates consistent `YYYY-MM-DD_description.pdf` format
+- **🎯 Smart Date Selection**: Chooses most relevant date
+- **🏷️ Title Recognition**: Intelligent document title extraction
+
+**Example Transformations:**
+```
+Original: "Scanbot_2024_03_15_document.pdf"
+Result: "2024-03-15_document.pdf"
+
+Original: "Gescanntes Dokument 123.pdf" (with "Invoice" detected)
+Result: "2024-09-21_invoice.pdf"
+```
+
+### Security Features
+
+- **Rate Limiting**: Per-IP request throttling with token bucket algorithm
+- **Request Validation**: File size limits and path traversal protection
+- **Security Headers**: CSRF, XSS, and content-type protection
+- **Error Tracking**: Comprehensive error logging with unique IDs
+- **Health Monitoring**: Real-time service health checks
+
+### Performance Optimization
+
+- **Multi-threaded Processing**: Parallel document processing
+- **Middleware Monitoring**: Request/response time tracking
+- **Resource Management**: Memory and CPU usage optimization
+- **Caching**: Intelligent caching of processing results
+- **Cleanup**: Automatic cleanup of old data and logs
+
+## Architecture
 
 ### Project Structure
 ```
 document-sorter/
-├── app.py                      # Main Flask application
-├── main.py                     # Alternative entry point
-├── config_secret.py            # Secret configuration
-├── requirements.txt            # Python dependencies
-├── .env.example               # Configuration template
-├── app/                       # Main application package
-│   ├── __init__.py
-│   ├── settings.py            # Centralized configuration
-│   ├── ai/                    # AI classification module
-│   │   ├── __init__.py
-│   │   ├── classifier.py      # Document classification logic
-│   │   └── prompts.py         # AI prompt management
-│   ├── api/                   # RESTful API blueprints
-│   │   ├── __init__.py
-│   │   ├── documents.py       # Document processing API
-│   │   ├── directories.py     # Directory management API
-│   │   └── monitoring.py      # Monitoring and logging API
-│   ├── config/                # Configuration management
-│   │   ├── __init__.py
-│   │   └── config_manager.py
-│   ├── directory/             # Directory and category management
-│   │   ├── __init__.py
-│   │   ├── categories.py      # Category management
-│   │   └── manager.py         # Directory operations
-│   ├── monitoring/            # Comprehensive monitoring system
-│   │   ├── __init__.py
-│   │   ├── logger.py          # Structured logging
-│   │   ├── error_reporter.py  # Error tracking
-│   │   ├── log_aggregator.py  # Log aggregation
+├── app.py                          # Main Flask application
+├── requirements.txt                # Python dependencies
+├── PRODUCTION.md                   # Production deployment guide
+├── app/                           # Main application package
+│   ├── ai/                        # AI and template processing
+│   │   ├── classifier.py          # Document classification
+│   │   ├── document_templates.py  # Template recognition engine
+│   │   └── prompts.py             # AI prompt management
+│   ├── api/                       # RESTful API blueprints
+│   │   ├── batch.py              # Batch processing API
+│   │   ├── documents.py          # Document processing API
+│   │   ├── monitoring.py         # Monitoring and health API
+│   │   ├── templates.py          # Template management API
+│   │   └── workflows.py          # Workflow management API
+│   ├── services/                  # Business services
+│   │   ├── batch_processor.py    # Batch processing engine
+│   │   ├── file_renaming.py      # Intelligent file renaming
+│   │   └── workflow_engine.py    # Workflow automation engine
+│   ├── monitoring/               # Monitoring and logging
+│   │   ├── logger.py            # Structured logging
+│   │   ├── error_reporter.py    # Error tracking
 │   │   └── performance_tracker.py # Performance metrics
-│   ├── pdf/                   # PDF processing
-│   │   ├── __init__.py
-│   │   ├── processor.py       # Text extraction
-│   │   └── preview.py         # Preview generation
-│   └── services/              # Business services
-│       ├── __init__.py
-│       ├── file_renaming.py    # Intelligent file renaming with date extraction
-│       ├── file_service.py
-│       ├── llm_service.py
-│       └── pdf_service.py
-├── templates/                 # HTML templates
-├── tests/                     # Test suite
-│   ├── __init__.py
-│   ├── conftest.py
-│   ├── test_app.py
-│   ├── test_auth.py
-│   ├── test_integration.py
-│   ├── test_llm_service.py
-│   ├── test_monitoring.py
-│   └── test_pdf_service.py
-├── .gitignore                 # Git ignore rules
-└── README.md                  # This file
+│   ├── production_config.py      # Production configuration
+│   ├── error_handlers.py         # Global error handling
+│   └── middleware.py             # Security and performance middleware
+├── templates/                     # HTML templates
+├── tests/                        # Test suite
+│   ├── test_production_features.py # Production feature tests
+│   └── ...                      # Other test modules
+├── Dockerfile                    # Docker configuration (optional)
+├── docker-compose.yml           # Docker Compose setup (optional)
+└── .dockerignore                # Docker ignore rules (optional)
 ```
-
-### Architecture Overview
-
-The application follows a modular architecture with clear separation of concerns:
-
-- **API Layer**: RESTful endpoints organized by functionality (documents, directories, monitoring)
-- **Service Layer**: Business logic for file operations, LLM integration, and PDF processing
-- **Data Layer**: Configuration management and directory structure handling
-- **Monitoring Layer**: Comprehensive logging, error tracking, and performance monitoring
 
 ### Key Components
 
-- **Smart AI Classification**: Automatic document categorization with intelligent fallback
-- **Intelligent File Renaming**: Advanced filename generation with date extraction and artifact removal
-- **Directory Management**: Dynamic category detection with enhanced blacklist filtering (Scanbot artifacts)
-- **Real-time System Metrics**: Live CPU, memory, and disk usage monitoring with psutil integration
-- **Performance Monitoring**: Comprehensive logging, error tracking, and system health monitoring
-- **Modular Design**: Each module can be developed and tested independently
+- **Template Engine**: Document type recognition with pattern matching
+- **Workflow Engine**: Rule-based automation with condition evaluation
+- **Batch Processor**: Multi-threaded document processing with state persistence
+- **Monitoring System**: Comprehensive logging, metrics, and health checks
+- **Security Middleware**: Rate limiting, validation, and protection features
 
-### API Endpoints
+## Testing
 
-#### Document Processing
-- `GET /api/scan-files` - List available PDF files
-- `POST /api/process-document` - Process and classify a document (includes filename suggestions)
-- `POST /api/move-document` - Move document to target directory
-- `POST /api/suggest-filename` - Generate intelligent filename suggestions
-
-#### Directory & System Management
-- `GET /api/directory-structure` - Get current directory tree
-- `GET /api/system-status` - Real-time system metrics and status
-
-#### Monitoring & Performance
-- `GET /api/monitoring/status` - System monitoring dashboard
-- `GET /api/performance/current` - Current performance metrics
-
-### Run Tests
+Run the test suite:
 ```bash
+# All tests
 pytest tests/ -v
-# Run specific test modules
+
+# Production features
+pytest tests/test_production_features.py -v
+
+# With coverage
+pytest tests/ --cov=app --cov-report=html
+
+# Specific test modules
 pytest tests/test_integration.py
 pytest tests/test_monitoring.py
 ```
 
-### Code Style
-```bash
-# Format with black
-black app/ tests/
+## Deployment
 
-# Lint with flake8
-flake8 app/ tests/
+### Production Deployment
+
+See [PRODUCTION.md](PRODUCTION.md) for comprehensive production deployment guide including:
+- Docker containerization
+- Environment configuration
+- Security considerations
+- Monitoring setup
+- Performance optimization
+- Troubleshooting guide
+
+### Quick Production Setup
+
+```bash
+# Install production dependencies
+pip install gunicorn
+
+# Set production environment
+export FLASK_ENV=production
+export WORKERS=4
+
+# Start with Gunicorn
+gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 120 app:app
 ```
+
+## Monitoring & Maintenance
+
+### Health Checks
+```bash
+# Basic health check
+curl http://localhost:5000/api/monitoring/health
+
+# Performance metrics
+curl http://localhost:5000/api/performance/current
+
+# System status
+curl http://localhost:5000/api/monitoring/status
+```
+
+### Log Management
+- Structured JSON logging
+- Automatic log rotation
+- Error tracking with unique IDs
+- Performance metrics collection
+- Export capabilities for analysis
 
 ## Troubleshooting
 
 ### Common Issues
 
-**Issue:** LM Studio Connection Error
-- **Solution:** Ensure LM Studio is running and a model is loaded
-- **Fallback:** Application uses smart keyword-based classification when AI is unavailable
+**LM Studio Connection Error**
+- Ensure LM Studio is running with a loaded model
+- Check LM_STUDIO_URL configuration
+- Application has fallback classification system
 
-**Issue:** PDF processing fails
-- **Solution:** Check PDF file for corruption or unsupported format
+**High CPU/Memory Usage**
+- Reduce number of workers
+- Check batch processing queue size
+- Monitor performance metrics at `/api/performance/current`
 
-**Issue:** Directories not found
-- **Solution:** Create the directories specified in `.env` or let the app create them automatically
+**Rate Limiting Issues**
+- Check current rate limits at `/api/security/rate-limits`
+- Adjust RATE_LIMIT_PER_MINUTE in configuration
+- Monitor for unusual traffic patterns
 
-**Issue:** Subdirectories not showing
-- **Solution:** Check API endpoint `/api/suggest-subdirs` and ensure categories exist
-
-**Issue:** AI suggestions not appearing
-- **Solution:** Verify LM Studio connection or check fallback classification system
+**Document Processing Failures**
+- Check PDF file integrity
+- Verify file permissions
+- Review error logs and tracking IDs
 
 ### Performance Optimization
 
-- Reduce `PRELOAD_COUNT` on slower systems
-- Use SSDs for better I/O performance
-- Close other resource-intensive applications
+- Use SSD storage for better I/O performance
+- Adjust worker count based on CPU cores
+- Monitor system resources with built-in metrics
+- Configure appropriate rate limits for your use case
 
 ## Contributing
 
@@ -304,3 +422,4 @@ This project is licensed under the MIT License. See `LICENSE` file for details.
 - [PyMuPDF](https://pymupdf.readthedocs.io/) for PDF processing
 - [Flask](https://flask.palletsprojects.com/) for the web framework
 - [LM Studio](https://lmstudio.ai/) for local AI integration
+- [Gunicorn](https://gunicorn.org/) for production WSGI server
