@@ -299,3 +299,43 @@ def system_status():
         'system_stats': system_stats,
         'cached_count': cached_count
     })
+
+
+@documents_bp.route('/delete-document', methods=['POST'])
+def delete_document():
+    """Delete a document file"""
+    try:
+        data = request.get_json()
+        file_path = data.get('file_path')
+
+        if not file_path:
+            return jsonify({'error': 'file_path is required'}), 400
+
+        file_to_delete = Path(file_path)
+
+        if not file_to_delete.exists():
+            return jsonify({'error': 'File not found'}), 404
+
+        if not file_to_delete.is_file():
+            return jsonify({'error': 'Path is not a file'}), 400
+
+        # Safety check: ensure file is in scan directory
+        scan_dir = Path(CONFIG['SCAN_DIR'])
+        try:
+            file_to_delete.resolve().relative_to(scan_dir.resolve())
+        except ValueError:
+            return jsonify({'error': 'File must be in scan directory'}), 403
+
+        # Delete the file
+        file_to_delete.unlink()
+
+        logger.info(f"Document deleted: {file_path}")
+
+        return jsonify({
+            'success': True,
+            'message': f'File {file_to_delete.name} deleted successfully'
+        })
+
+    except Exception as e:
+        logger.error(f"Error deleting document: {e}")
+        return jsonify({'error': str(e)}), 500

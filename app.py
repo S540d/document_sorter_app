@@ -11,7 +11,7 @@ from app.pdf import PDFProcessor, PDFPreviewGenerator
 from app.ai import DocumentClassifier, PromptManager
 from app.directory import DirectoryManager, CategoryManager
 from app.api import documents_bp, directories_bp, monitoring_bp
-from app.api.math_learning import math_bp
+# Math learning removed as requested
 from app.api.batch import batch_bp
 from app.api.templates import templates_bp
 from app.api.workflows import workflows_bp
@@ -40,7 +40,7 @@ register_middleware(app)
 app.register_blueprint(documents_bp)
 app.register_blueprint(directories_bp)
 app.register_blueprint(monitoring_bp)
-app.register_blueprint(math_bp)
+# Math blueprint removed
 app.register_blueprint(batch_bp)
 app.register_blueprint(templates_bp)
 app.register_blueprint(workflows_bp)

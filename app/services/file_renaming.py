@@ -191,6 +191,156 @@ class FileRenamingService:
 
         return title.lower()
 
+    def extract_letterhead_companies(self, text: str) -> List[str]:
+        """Extract company names from document letterhead (first few lines)"""
+        companies = []
+
+        if not text:
+            return companies
+
+        lines = text.split('\n')
+
+        # Common company keywords and patterns - focusing on German companies and institutions
+        company_patterns = {
+            'victoria': r'(victoria|victoria\s+versicherung)',
+            'huk': r'(huk|huk[-\s]*coburg|huk24)',
+            'dkb': r'(dkb|deutsche\s+kreditbank)',
+            'deutsche_bahn': r'(deutsche\s+bahn|db\s+ag|db\s+regio|db\s+fernverkehr)',
+            'sparkasse': r'(sparkasse|kreissparkasse|stadtsparkasse)',
+            'volksbank': r'(volksbank|vr[-\s]*bank|raiffeisenbank)',
+            'commerzbank': r'(commerzbank|comdirect)',
+            'postbank': r'(postbank|deutsche\s+post)',
+            'ing': r'(ing[-\s]*diba|ing\s+bank)',
+            'santander': r'(santander)',
+            'targobank': r'(targobank)',
+            'allianz': r'(allianz)',
+            'axa': r'(axa)',
+            'ergo': r'(ergo)',
+            'signal_iduna': r'(signal\s+iduna)',
+            'generali': r'(generali)',
+            'zurich': r'(zurich)',
+            'aok': r'(aok|allgemeine\s+ortskrankenkasse)',
+            'barmer': r'(barmer|barmer\s+gek)',
+            'tk': r'(techniker\s+krankenkasse|tk)',
+            'dak': r'(dak[-\s]*gesundheit)',
+            'ikk': r'(ikk|innungskrankenkasse)',
+            'bkk': r'(bkk|betriebskrankenkasse)',
+            'knappschaft': r'(knappschaft)',
+            'telekom': r'(deutsche\s+telekom|telekom|t[-\s]*mobile)',
+            'vodafone': r'(vodafone)',
+            'o2': r'(o2|telefónica)',
+            'eon': r'(e\.on|eon)',
+            'rwe': r'(rwe)',
+            'vattenfall': r'(vattenfall)',
+            'stadtwerke': r'(stadtwerke)',
+            'enercity': r'(enercity)',
+            'swb': r'(swb|wesernetz)',
+            'amazon': r'(amazon)',
+            'ebay': r'(ebay)',
+            'paypal': r'(paypal)',
+            'klarna': r'(klarna)',
+            'check24': r'(check24)',
+            'verivox': r'(verivox)',
+            'immobilienscout24': r'(immobilienscout24|is24)',
+            'autoscout24': r'(autoscout24)',
+            'adac': r'(adac)',
+            'tuev': r'(tüv|tuev)',
+            'dekra': r'(dekra)',
+            'bmw': r'(bmw)',
+            'mercedes': r'(mercedes[-\s]*benz|daimler)',
+            'audi': r'(audi)',
+            'volkswagen': r'(volkswagen|vw)',
+            'porsche': r'(porsche)',
+            'lidl': r'(lidl)',
+            'aldi': r'(aldi)',
+            'rewe': r'(rewe)',
+            'edeka': r'(edeka)',
+            'netto': r'(netto)',
+            'penny': r'(penny)',
+            'dm': r'(dm[-\s]*drogerie)',
+            'rossmann': r'(rossmann)',
+            'media_markt': r'(media\s+markt|mediamarkt)',
+            'saturn': r'(saturn)',
+            'otto': r'(otto\s+group|otto\.de)',
+            'zalando': r'(zalando)',
+            'h_und_m': r'(h&m|hennes)',
+            'c_und_a': r'(c&a)',
+            'ikea': r'(ikea)',
+            'hornbach': r'(hornbach)',
+            'bauhaus': r'(bauhaus)',
+            'obi': r'(obi)',
+            'toom': r'(toom)',
+            'hagebau': r'(hagebau)',
+            'mcdonalds': r'(mcdonald\'s|mcdonalds)',
+            'burger_king': r'(burger\s+king)',
+            'kfc': r'(kfc)',
+            'subway': r'(subway)',
+            'starbucks': r'(starbucks)',
+            'deutsche_post': r'(deutsche\s+post|dhl)',
+            'ups': r'(ups)',
+            'fedex': r'(fedex)',
+            'hermes': r'(hermes)',
+            'dpd': r'(dpd)',
+            'gls': r'(gls)',
+            'lufthansa': r'(lufthansa)',
+            'eurowings': r'(eurowings)',
+            'ryanair': r'(ryanair)',
+            'easyjet': r'(easyjet)',
+            'booking': r'(booking\.com)',
+            'expedia': r'(expedia)',
+            'hrs': r'(hrs)',
+            'hotels': r'(hotels\.com)',
+            'airbnb': r'(airbnb)',
+            'flixbus': r'(flixbus)',
+            'bahn': r'(deutsche\s+bahn|db)',
+            'hvv': r'(hvv|hamburger\s+verkehrsverbund)',
+            'mvv': r'(mvv|münchener\s+verkehrs)',
+            'vvs': r'(vvs|verkehrs.*stuttgart)',
+            'vrr': r'(vrr|verkehrsverbund.*rhein)',
+            'vgn': r'(vgn|verkehrsverbund.*nürnberg)',
+            'kvb': r'(kvb|kölner\s+verkehrs)',
+            'bvg': r'(bvg|berliner\s+verkehrs)',
+        }
+
+        # Check first 10 lines for company names (letterhead area)
+        for i, line in enumerate(lines[:10]):
+            line = line.strip()
+            if not line or len(line) < 3:
+                continue
+
+            line_lower = line.lower()
+
+            # Check against company patterns
+            for company_key, pattern in company_patterns.items():
+                if re.search(pattern, line_lower):
+                    companies.append(company_key)
+
+            # Also look for patterns that indicate company names:
+            # - All caps words (likely company names)
+            # - Lines with GmbH, AG, e.V., etc.
+            # - Lines with specific formatting
+            company_indicators = [
+                r'\b[A-ZÄÖÜ]{3,}(?:\s+[A-ZÄÖÜ]{2,})*\b',  # All caps words
+                r'.*(gmbh|ag|e\.v\.|ev|kg|ohg|gbr|ug).*',  # Legal forms
+                r'.*(versicherung|bank|sparkasse|kasse).*',  # Financial institutions
+                r'.*(stadtwerke|stadtsparkasse).*',  # Municipal companies
+                r'.*(^|\s)[A-Z][a-zäöü]*\s+[A-Z][a-zäöü]*(\s+[A-Z][a-zäöü]*)*(\s+(GmbH|AG|e\.V\.))?.*',  # Title case names with legal form
+            ]
+
+            for pattern in company_indicators:
+                matches = re.finditer(pattern, line, re.IGNORECASE)
+                for match in matches:
+                    matched_text = match.group().strip()
+                    # Clean up and add if it looks like a company name
+                    if len(matched_text) > 3 and len(matched_text) < 50:
+                        # Convert to filename-friendly format
+                        clean_name = re.sub(r'[^\w\säöüÄÖÜß]', '', matched_text)
+                        clean_name = re.sub(r'\s+', '_', clean_name.strip()).lower()
+                        if clean_name and clean_name not in companies:
+                            companies.append(clean_name)
+
+        return companies[:3]  # Limit to first 3 matches to avoid noise
+
     def extract_subject_keywords(self, text: str) -> List[str]:
         """Extract subject-specific keywords that could be useful for filename"""
         keywords = []
@@ -235,6 +385,9 @@ class FileRenamingService:
         # Try to extract meaningful title from PDF content
         extracted_title = self.extract_title_from_text(text_content)
 
+        # Extract letterhead companies
+        letterhead_companies = self.extract_letterhead_companies(text_content)
+
         # Extract subject keywords
         subject_keywords = self.extract_subject_keywords(text_content)
 
@@ -256,8 +409,11 @@ class FileRenamingService:
         # if category_clean:
         #     components.append(category_clean)
 
-        # Choose best name component (priority: extracted title > subject keywords > cleaned original)
-        if extracted_title:
+        # Choose best name component (priority: letterhead companies > extracted title > subject keywords > cleaned original)
+        if letterhead_companies:
+            # Use the first letterhead company found
+            components.append(letterhead_companies[0])
+        elif extracted_title:
             components.append(extracted_title)
         elif subject_keywords:
             # Use the first relevant keyword
@@ -284,8 +440,9 @@ class FileRenamingService:
         dates = self.extract_dates_from_text(text_content)
         target_date = self.get_most_recent_past_date(dates)
 
-        # Extract title and keywords
+        # Extract title, companies and keywords
         extracted_title = self.extract_title_from_text(text_content)
+        letterhead_companies = self.extract_letterhead_companies(text_content)
         subject_keywords = self.extract_subject_keywords(text_content)
 
         # Generate new filename
@@ -299,8 +456,9 @@ class FileRenamingService:
             'category': category,
             'date_source': 'content' if target_date and dates else 'fallback',
             'extracted_title': extracted_title,
+            'letterhead_companies': letterhead_companies,
             'subject_keywords': subject_keywords,
-            'title_source': 'pdf_content' if extracted_title else 'keywords' if subject_keywords else 'filename'
+            'title_source': 'letterhead' if letterhead_companies else 'pdf_content' if extracted_title else 'keywords' if subject_keywords else 'filename'
         }
 
 

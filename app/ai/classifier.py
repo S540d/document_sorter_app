@@ -185,27 +185,84 @@ class DocumentClassifier:
         filename_lower = filename.lower() if filename else ""
         text_sample = text[:500].lower() if text else ""
 
-        # Keyword mapping to common category patterns
+        # Enhanced keyword mapping with partial matches
         keyword_mappings = {
             'arbeit': ['arbeit', 'gehalt', 'lohn', 'arbeitsvertrag', 'job', 'deutsche bahn', 'evg', 'evoik'],
-            'finanzen': ['rechnung', 'invoice', 'betrag', 'euro', 'umsatzsteuer', 'bank', 'steuer'],
+            'rechnung': ['rechnung', 'invoice', 'betrag', 'euro', 'umsatzsteuer', 'rechnungen', 'faktura'],
+            'finanzen': ['bank', 'steuer', 'finanz', 'geld', 'kapital', 'investment'],
             'versicherung': ['versicherung', 'police', 'schadensfall'],
             'wohnen': ['miete', 'wohnung', 'hausverwaltung', 'mietvertrag'],
             'fahrzeug': ['auto', 'kfz', 'fahrzeug', 'tüv', 'motorrad'],
             'medizin': ['arzt', 'behandlung', 'patient', 'medizin', 'gesundheit'],
-            'kita': ['kita', 'kindergarten', 'betreuung']
+            'kita': ['kita', 'kindergarten', 'betreuung'],
+            'schöffe': ['schöffe', 'schöffin', 'schöffendienst', 'laienrichter', 'gericht', 'landgericht', 'amtsgericht'],
+            'gericht': ['gericht', 'richter', 'urteil', 'verhandlung', 'justiz', 'landgericht', 'amtsgericht'],
+            'politik': ['politik', 'politiker', 'partei', 'wahl', 'bundestag', 'landtag'],
+            'verein': ['verein', 'vereinigung', 'club', 'mitgliedschaft', 'beitrag'],
+            'immobilien': ['immobilie', 'haus', 'wohnung', 'grundstück', 'makler'],
+            'bildung': ['schule', 'universität', 'studium', 'kurs', 'ausbildung'],
+            'sport': ['sport', 'fitness', 'verein', 'training', 'wettkampf']
         }
 
-        # Check filename and text for keywords
+        # Enhanced matching: Check filename and text for keywords
+        best_match = None
+        best_score = 0
+
         for pattern, keywords in keyword_mappings.items():
             for keyword in keywords:
                 if keyword in filename_lower or keyword in text_sample:
-                    # Find matching category
+                    # Find matching category with partial string matching
                     for category in available_categories:
                         category_lower = category.lower()
-                        if (pattern in category_lower or
-                            any(k in category_lower for k in keywords)):
-                            return category
+
+                        # Exact match gets highest score
+                        if pattern in category_lower:
+                            score = 10
+                            # Boost score for specific court/legal categories
+                            if pattern in ['schöffe', 'gericht'] and ('schöff' in category_lower or 'gericht' in category_lower):
+                                score = 15
+                        # Keyword match gets medium score
+                        elif any(k in category_lower for k in keywords):
+                            score = 5
+                            # Boost score for court/legal matches
+                            if any(legal_term in k for legal_term in ['schöff', 'gericht', 'landgericht', 'amtsgericht']) and \
+                               any(legal_cat in category_lower for legal_cat in ['schöff', 'gericht']):
+                                score = 12
+                            # Boost score for invoice/billing matches
+                            elif any(invoice_term in k for invoice_term in ['rechnung', 'rechnungen', 'invoice']) and \
+                                 any(invoice_cat in category_lower for invoice_cat in ['rechnung', 'rechnungen']):
+                                score = 12
+                        # Partial match (important for cases like "schöffe" -> "schöffendienst")
+                        elif any(category_part in keyword or keyword in category_part
+                                for category_part in category_lower.split()
+                                for keyword in keywords if len(keyword) > 3):
+                            score = 3
+                            # Special boost for schöffe matches
+                            if 'schöff' in keyword and 'schöff' in category_lower:
+                                score = 11
+                        else:
+                            continue
+
+                        if score > best_score:
+                            best_score = score
+                            best_match = category
+
+        if best_match:
+            return best_match
+
+        # Enhanced partial matching for directory names
+        for category in available_categories:
+            category_words = category.lower().split()
+            text_words = text_sample.split()
+            filename_words = filename_lower.split()
+
+            for cat_word in category_words:
+                if len(cat_word) > 4:  # Only consider longer words
+                    for text_word in text_words + filename_words:
+                        if len(text_word) > 3:
+                            # Check if words have significant overlap
+                            if (cat_word in text_word or text_word in cat_word) and len(text_word) > 3:
+                                return category
 
         # Default fallback to first non-blacklisted category
         preferred_fallbacks = ['Sonstiges', 'sonstiges', '12 schriftverkehr']
