@@ -1753,9 +1753,9 @@
             try {
                 const response = await fetch('/api/scan-files');
                 const data = await response.json();
-                
+
                 const container = document.getElementById('file-list-container');
-                
+
                 if (data.files && data.files.length > 0) {
                     container.innerHTML = data.files.map(file => `
                         <div class="file-item" onclick="selectFile('${file.path}', '${file.name}')">
@@ -2892,10 +2892,6 @@
         function setAIIndicator(data) {
             const indicator = document.getElementById('ai-indicator');
             if (!indicator) return;
-
-                confidence: data.confidence,
-                fallback_used: data.fallback_used
-            });
 
             // Bestimme ob AI oder Fallback verwendet wurde
             const isAIPowered = data.confidence === 'high' && !data.fallback_used;
