@@ -34,11 +34,11 @@ An intelligent web application for automatic PDF document sorting with local AI 
 - **Export capabilities** for metrics and reports
 
 ### 🌐 **User Interface**
-- **3-column workflow** with files, intelligent processing, and manual controls
+- **Unified workflow** with streamlined file processing and intelligent controls
+- **Compact interface design** for efficient space utilization
 - **Interactive web interface** with real-time status updates
-- **Workflow management** for rule creation and testing
-- **Batch processing interface** with progress visualization
-- **Template management** for document type configuration
+- **AI-powered suggestions** with manual override capabilities
+- **Dynamic subcategory support** with intelligent path suggestions
 
 ## Quick Start
 
@@ -142,24 +142,21 @@ ERROR_REPORTING=true
 
 ## Usage Guide
 
-### 1. Document Processing Workflow
+### 1. Unified Document Processing Workflow
 
-#### 📂 **Files Column (Left)**
+#### 📂 **File Management (Left Sidebar)**
 - Automatically loads PDFs from scan directory
-- Shows file metadata and preview
-- Click to analyze documents
+- Compact file list with essential metadata
+- One-click document selection and preview
+- Delete functionality for irrelevant documents
 
-#### 🤖 **Intelligent Column (Center)**
-- **AI-powered workflow** with template recognition
-- **Smart filename suggestions** with date extraction
-- **Category predictions** with confidence scores
-- **One-click processing** with "Execute AI Workflow"
-- **Rule-based automation** for consistent processing
-
-#### ⚙️ **Manual Column (Right)**
-- **Traditional category selection** with directory tree
-- **Custom filename editing** and path control
-- **Fallback option** when AI suggestions need adjustment
+#### 🤖 **Unified Processing (Main Area)**
+- **AI-enhanced letterhead detection** with 70+ German companies
+- **Smart category and subcategory suggestions** with confidence scoring
+- **Intelligent filename generation** with date extraction and company recognition
+- **Manual override capabilities** for all AI suggestions
+- **Dynamic path browser** for custom directory selection
+- **One-click processing** with comprehensive validation
 
 ### 2. Workflow Management
 
@@ -205,6 +202,7 @@ Built-in document templates:
 - `POST /api/process-document` - Process and classify document
 - `POST /api/move-document` - Move document to target directory
 - `POST /api/suggest-filename` - Generate filename suggestions
+- `POST /api/delete-document` - Delete document with security validation
 
 ### Workflow Management
 - `GET /api/workflows/rules` - List workflow rules
@@ -227,11 +225,20 @@ Built-in document templates:
 
 ## Advanced Features
 
+### Enhanced AI Classification
+
+- **Letterhead Company Detection**: Recognizes 70+ major German companies from document headers
+- **Improved Keyword Mapping**: Separated 'rechnung' from 'finanzen' for better categorization
+- **Smart Scoring System**: Enhanced matching for specific cases (e.g., Schöffe → Schöffendienst)
+- **Subcategory Intelligence**: Automatic suggestion of appropriate subdirectories
+- **Context-Aware Classification**: Considers document structure and content patterns
+
 ### Intelligent File Renaming
 
 Automatically generates standardized, meaningful filenames:
 
 - **📅 Date Extraction**: Detects dates from document content
+- **🏢 Letterhead Detection**: Recognizes 70+ major German companies from document headers
 - **🧹 Clean Naming**: Removes scanner artifacts (Scanbot, etc.)
 - **📊 Format Standardization**: Creates consistent `YYYY-MM-DD_description.pdf` format
 - **🎯 Smart Date Selection**: Chooses most relevant date
@@ -244,6 +251,9 @@ Result: "2024-03-15_document.pdf"
 
 Original: "Gescanntes Dokument 123.pdf" (with "Invoice" detected)
 Result: "2024-09-21_invoice.pdf"
+
+With Letterhead: "scan123.pdf" (with "Deutsche Telekom" detected)
+Result: "2024-09-21_deutsche_telekom_rechnung.pdf"
 ```
 
 ### Security Features
