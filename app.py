@@ -25,7 +25,7 @@ from app.middleware import register_middleware
 from app.settings import config, CONFIG
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 
 # Initialize production configuration
 config_manager.initialize_app(app)

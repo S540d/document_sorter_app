@@ -225,11 +225,11 @@ class DocumentClassifier:
                         elif any(k in category_lower for k in keywords):
                             score = 5
                             # Boost score for court/legal matches
-                            if any(legal_term in k for legal_term in ['schöff', 'gericht', 'landgericht', 'amtsgericht']) and \
+                            if any(legal_term in keyword for keyword in keywords for legal_term in ['schöff', 'gericht', 'landgericht', 'amtsgericht']) and \
                                any(legal_cat in category_lower for legal_cat in ['schöff', 'gericht']):
                                 score = 12
                             # Boost score for invoice/billing matches
-                            elif any(invoice_term in k for invoice_term in ['rechnung', 'rechnungen', 'invoice']) and \
+                            elif any(invoice_term in keyword for keyword in keywords for invoice_term in ['rechnung', 'rechnungen', 'invoice']) and \
                                  any(invoice_cat in category_lower for invoice_cat in ['rechnung', 'rechnungen']):
                                 score = 12
                         # Partial match (important for cases like "schöffe" -> "schöffendienst")

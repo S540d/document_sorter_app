@@ -370,7 +370,7 @@ class FileRenamingService:
 
     def generate_smart_filename(self, original_filename: str, text_content: str,
                               category: str, fallback_date: Optional[date] = None) -> str:
-        """Generate intelligent filename with category and date"""
+        """Generate intelligent filename with schema: Datum_Kategorie_Firma_Titel"""
 
         # Extract dates from content
         dates = self.extract_dates_from_text(text_content)
@@ -394,34 +394,41 @@ class FileRenamingService:
         # Clean the original filename as fallback
         clean_name = self.clean_filename(original_filename)
 
-        # Create category prefix (remove numbers and clean up)
+        # Format date as YYYY-MM-DD
+        date_str = target_date.strftime('%Y-%m-%d')
+
+        # Create category component (remove numbers and clean up)
         category_clean = re.sub(r'^\d+[_\s]*', '', category)  # Remove leading numbers
         category_clean = re.sub(r'[_\s]+', '_', category_clean)  # Normalize separators
         category_clean = category_clean.strip('_').lower()
 
-        # Format date as YYYY-MM-DD
-        date_str = target_date.strftime('%Y-%m-%d')
+        # Determine company component
+        company_component = ""
+        if letterhead_companies:
+            company_component = self._truncate_component(letterhead_companies[0], 25)
 
-        # Build filename components
+        # Determine title component (priority: extracted title > subject keywords > cleaned original)
+        title_component = ""
+        if extracted_title:
+            title_component = self._truncate_component(extracted_title, 25)
+        elif subject_keywords:
+            title_component = self._truncate_component(subject_keywords[0], 25)
+        elif clean_name:
+            title_component = self._truncate_component(clean_name, 25)
+        else:
+            title_component = 'dokument'
+
+        # Build filename components: Datum_Kategorie_Firma_Titel
         components = [date_str]
 
-        # Skip category - user requested removal
-        # if category_clean:
-        #     components.append(category_clean)
+        if category_clean:
+            components.append(category_clean)
 
-        # Choose best name component (priority: letterhead companies > extracted title > subject keywords > cleaned original)
-        if letterhead_companies:
-            # Use the first letterhead company found
-            components.append(letterhead_companies[0])
-        elif extracted_title:
-            components.append(extracted_title)
-        elif subject_keywords:
-            # Use the first relevant keyword
-            components.append(subject_keywords[0])
-        elif clean_name:
-            components.append(clean_name)
-        else:
-            components.append('dokument')
+        if company_component:
+            components.append(company_component)
+
+        if title_component:
+            components.append(title_component)
 
         # Combine parts
         new_filename = '_'.join(components) + '.pdf'
@@ -431,6 +438,27 @@ class FileRenamingService:
         new_filename = re.sub(r'^_+|_+$', '', new_filename)  # Remove leading/trailing underscores
 
         return new_filename
+
+    def _truncate_component(self, text: str, max_length: int) -> str:
+        """Truncate text component to max_length characters, preserving word boundaries"""
+        if not text or len(text) <= max_length:
+            return text
+
+        # Clean up the text first
+        text = re.sub(r'[_\s]+', '_', text)
+        text = text.strip('_')
+
+        if len(text) <= max_length:
+            return text
+
+        # Find the last space/underscore within the limit
+        truncated = text[:max_length]
+        last_sep = max(truncated.rfind('_'), truncated.rfind(' '))
+
+        if last_sep > max_length * 0.7:  # Only use word boundary if it's not too short
+            return text[:last_sep]
+        else:
+            return text[:max_length]
 
     def suggest_filename(self, original_filename: str, text_content: str,
                         category: str) -> dict:
